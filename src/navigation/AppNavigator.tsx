@@ -1,9 +1,10 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { StatusBar } from 'expo-status-bar';
 import { RootStackParamList } from '../types/navigation';
-import { colors, typography } from '../theme/colors';
-import { AuthProvider, useAuth } from '../context/AuthContext';
+import { palette } from '../theme/tokens';
+import { AuthProvider } from '../context/AuthContext';
 import { RecipeProvider } from '../context/RecipeContext';
 import SplashScreen from '../screens/SplashScreen';
 import LoginScreen from '../screens/LoginScreen';
@@ -14,63 +15,34 @@ import DetailScreen from '../screens/DetailScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-// Navigation utama (tanpa AuthContext)
 function AppNavigator() {
   return (
     <Stack.Navigator
+      initialRouteName="Splash"
       screenOptions={{
-        headerStyle: {
-          backgroundColor: colors.primary,
-        },
-        headerTintColor: colors.textLight,
-        headerTitleStyle: typography.h3,
-        headerShadowVisible: false,
+        headerShown: false,
         contentStyle: {
-          backgroundColor: colors.background,
+          backgroundColor: palette.canvas,
         },
         animation: 'slide_from_right',
       }}
     >
-      <Stack.Screen
-        name="Splash"
-        component={SplashScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="Login"
-        component={LoginScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="Register"
-        component={RegisterScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{ title: 'Resep Kopiku' }}
-      />
-      <Stack.Screen
-        name="Form"
-        component={FormScreen}
-        options={{ title: 'Form Resep' }}
-      />
-      <Stack.Screen
-        name="Detail"
-        component={DetailScreen}
-        options={{ title: 'Detail Resep' }}
-      />
+      <Stack.Screen name="Splash" component={SplashScreen} />
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="Home" component={HomeScreen} />
+      <Stack.Screen name="Form" component={FormScreen} />
+      <Stack.Screen name="Detail" component={DetailScreen} />
     </Stack.Navigator>
   );
 }
 
-// Root component dengan providers
 export default function App() {
   return (
     <AuthProvider>
       <RecipeProvider>
         <NavigationContainer>
+          <StatusBar style="dark" />
           <AppNavigator />
         </NavigationContainer>
       </RecipeProvider>

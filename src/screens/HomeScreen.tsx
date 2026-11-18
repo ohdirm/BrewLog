@@ -1,540 +1,541 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
-  Text,
-  TextInput,
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   Modal,
-  Platform,
+  TextInput,
+  Pressable,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import {
+  Coffee,
+  Plus,
+  Search,
+  X,
+  LogOut,
+  Star,
+  Check,
+  Clock,
+  Sparkles,
+} from 'lucide-react-native';
 import { RootStackParamList } from '../types/navigation';
-import { RecipeCategory } from '../types';
-import { colors, spacing, typography } from '../theme/colors';
+import { Recipe, RecipeCategory } from '../types';
+import { palette, spacing, radii, strokes, layout } from '../theme/tokens';
+import { Typography, Badge, SurfaceCard, Button, EmptyState } from '../components/common';
 import { useAuth } from '../context/AuthContext';
 import { useRecipes } from '../context/RecipeContext';
+import { triggerHaptic } from '../utils/haptics';
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Home'>;
 };
 
-const categories: { label: RecipeCategory | 'Semua'; value: RecipeCategory | 'Semua' }[] = [
-  { label: 'Semua', value: 'Semua' },
-  { label: 'Kopi Panas', value: 'Kopi Panas' },
-  { label: 'Kopi Dingin', value: 'Kopi Dingin' },
-  { label: 'Non-Kopi', value: 'Non-Kopi' },
+const CATEGORIES: (RecipeCategory | 'Semua')[] = [
+  'Semua',
+  'Kopi Panas',
+  'Kopi Dingin',
+  'Non-Kopi',
 ];
 
 const HomeScreen: React.FC<Props> = ({ navigation }) => {
-  const { logout } = useAuth();
-  const { recipes, deleteRecipe, toggleTried, toggleFavorite } = useRecipes();
+  const { username, logout } = useAuth();
+  const { recipes, toggleTried, toggleFavorite } = useRecipes();
 
-  // State untuk filter dan search
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<RecipeCategory | 'Semua'>('Semua');
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  // Load ulang resep saat fokus ke screen ini
-  useFocusEffect(
-    React.useCallback(() => {
-      // Re-render akan terpicu oleh context update, tidak perlu manual reload
-    }, [])
-  );
+  // Filter recipes based on query & category
+  const filteredRecipes = useMemo(() => {
+    return recipes.filter((recipe) => {
+      const matchesSearch = recipe.name.toLowerCase().includes(searchQuery.toLowerCase().trim());
+      const matchesCategory =
+        selectedCategory === 'Semua' || recipe.category === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [recipes, searchQuery, selectedCategory]);
 
-  // Filter resep berdasarkan search + category
-  const filteredRecipes = recipes.filter((recipe) => {
-    const matchesSearch = recipe.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory =
-      selectedCategory === 'Semua' || recipe.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
-
-  // Konfirmasi sebelum hapus resep
-  const handleDelete = (id: string, name: string) => {
-    Alert.alert('Hapus Resep', `Yakin ingin menghapus "${name}"?`, [
-      { text: 'Batal', style: 'cancel' },
-      {
-        text: 'Hapus',
-        style: 'destructive',
-        onPress: async () => {
-          const success = await deleteRecipe(id);
-          if (!success) {
-            Alert.alert('Gagal', 'Gagal menghapus resep');
-          }
-        },
-      },
-    ]);
-  };
-
-  // Tombol Logout dengan konfirmasi
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setShowLogoutModal(false);
-    logout();
+    await logout();
+    navigation.replace('Login');
   };
 
-  // Render item resep di FlatList
-  const renderRecipeItem = ({ item: recipe }: { item: typeof recipes[0] }) => (
-    <TouchableOpacity
-      style={[
-        styles.card,
-        recipe.isTried && styles.cardTried, // Style berbeda jika sudah dicoba
-      ]}
-      onPress={() => navigation.navigate('Detail', { recipeId: recipe.id })}
-    >
-      {/* Header kartu: nama + kategori */}
-      <View style={styles.cardHeader}>
-        <Text style={[styles.recipeName, recipe.isTried && styles.recipeNameTried]}>
-          {recipe.name}
-        </Text>
-        <TouchableOpacity
-          style={styles.favoriteButton}
-          onPress={() => toggleFavorite(recipe.id)}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.star, recipe.isFavorite && styles.starFilled]}>
-            {recipe.isFavorite ? '⭐' : '☆'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+  const handleToggleFavorite = (recipeId: string) => {
+    triggerHaptic();
+    toggleFavorite(recipeId);
+  };
 
-      {/* Kategori badge */}
-      <View style={styles.categoryContainer}>
-        <Text style={styles.categoryBadge}>{recipe.category}</Text>
-      </View>
+  const handleToggleTried = (recipeId: string) => {
+    triggerHaptic();
+    toggleTried(recipeId);
+  };
 
-      {/* Tag: sudah dicoba / belum */}
-      <View style={styles.statusContainer}>
-        {recipe.isTried ? (
-          <View style={styles.triedBadge}>
-            <Text style={styles.triedText}>✅ Sudah dicoba</Text>
-          </View>
-        ) : (
-          <View style={styles.notTriedBadge}>
-            <Text style={styles.notTriedText}>⏳ Belum dicoba</Text>
+  const renderRecipeItem = ({ item }: { item: Recipe }) => {
+    return (
+      <SurfaceCard
+        onPress={() => navigation.navigate('Detail', { recipeId: item.id })}
+        style={styles.card}
+      >
+        {/* Top Card Row: Title & Favorite Star */}
+        <View style={styles.cardHeaderRow}>
+          <Typography variant="h3" color="primary" numberOfLines={1} style={styles.recipeTitle}>
+            {item.name}
+          </Typography>
+
+          <TouchableOpacity
+            onPress={() => handleToggleFavorite(item.id)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={styles.favoriteButton}
+          >
+            <Star
+              size={20}
+              color={item.isFavorite ? palette.statusStar : palette.textTertiary}
+              fill={item.isFavorite ? palette.statusStar : 'transparent'}
+              strokeWidth={1.75}
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Badges Row: Category & Tried Status */}
+        <View style={styles.badgesRow}>
+          <Badge
+            label={item.category}
+            tone={
+              item.category === 'Kopi Panas'
+                ? 'accent'
+                : item.category === 'Kopi Dingin'
+                ? 'warning'
+                : 'neutral'
+            }
+          />
+
+          <TouchableOpacity
+            onPress={() => handleToggleTried(item.id)}
+            style={styles.triedBadgeTouch}
+            activeOpacity={0.7}
+          >
+            <Badge
+              label={item.isTried ? 'Sudah dicoba' : 'Belum dicoba'}
+              tone={item.isTried ? 'success' : 'neutral'}
+              icon={
+                item.isTried ? (
+                  <Check size={11} color={palette.statusSuccess} strokeWidth={2.5} />
+                ) : (
+                  <Clock size={11} color={palette.textSecondary} strokeWidth={2} />
+                )
+              }
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Ingredients Quick Preview (Tabular numbers) */}
+        {item.ingredients.length > 0 && (
+          <View style={styles.ingredientsRow}>
+            <Typography variant="caption" color="secondary" style={styles.ingredientsPrefix}>
+              Bahan:
+            </Typography>
+            <Typography
+              variant="caption"
+              color="primary"
+              tabular
+              numberOfLines={1}
+              style={styles.ingredientsList}
+            >
+              {item.ingredients
+                .slice(0, 3)
+                .map((ing) => `${ing.amount} ${ing.unit} ${ing.name}`)
+                .join(' • ')}
+              {item.ingredients.length > 3 ? ' ...' : ''}
+            </Typography>
           </View>
         )}
-
-        {/* Toggle status dicoba */}
-        <TouchableOpacity
-          style={styles.tryButton}
-          onPress={() => toggleTried(recipe.id)}
-        >
-          <Text style={styles.tryText}>
-            {recipe.isTried ? 'Ubah ke Belum' : 'Tandai Sudah'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Bahan utama (tampil 2 bahan pertama) */}
-      {recipe.ingredients.length > 0 && (
-        <View style={styles.ingredientsContainer}>
-          <Text style={styles.ingredientsLabel}>Bahan:</Text>
-          <Text style={styles.ingredientsText}>
-            {recipe.ingredients.slice(0, 2).map((ing) => `${ing.amount} ${ing.unit} ${ing.name}`).join(', ')}
-            {recipe.ingredients.length > 2 ? '...' : ''}
-          </Text>
-        </View>
-      )}
-    </TouchableOpacity>
-  );
-
-  // Empty state: belum ada resep
-  const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
-      <Text style={styles.emptyIcon}>☕</Text>
-      <Text style={styles.emptyTitle}>Belum ada resep</Text>
-      <Text style={styles.emptyText}>Yuk tambah resep favoritmu!</Text>
-      <TouchableOpacity
-        style={styles.addRecipeButton}
-        onPress={() => navigation.navigate('Form', {})}
-      >
-        <Text style={styles.addRecipeText}>+ Tambah Resep</Text>
-      </TouchableOpacity>
-    </View>
-  );
+      </SurfaceCard>
+    );
+  };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Resep Kopiku</Text>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      {/* Top Application Bar */}
+      <View style={styles.topBar}>
+        <View style={styles.brandContainer}>
+          <View style={styles.brandIcon}>
+            <Coffee size={20} color={palette.accent} strokeWidth={2} />
+          </View>
+          <View>
+            <Typography variant="h2" color="primary" style={styles.brandTitle}>
+              BrewLog
+            </Typography>
+            <Typography variant="caption" color="secondary">
+              Barista @{username || 'Pengguna'}
+            </Typography>
+          </View>
+        </View>
+
         <TouchableOpacity
+          onPress={() => {
+            triggerHaptic();
+            setShowLogoutModal(true);
+          }}
           style={styles.logoutButton}
-          onPress={() => setShowLogoutModal(true)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Text style={styles.logoutText}> Logout </Text>
+          <LogOut size={18} color={palette.textSecondary} strokeWidth={1.75} />
         </TouchableOpacity>
       </View>
 
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Cari resep..."
-          placeholderTextColor={colors.textMuted}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          returnKeyType="search"
+      {/* Search Input Bar */}
+      <View style={styles.searchSection}>
+        <View style={styles.searchContainer}>
+          <Search size={18} color={palette.textTertiary} strokeWidth={1.75} />
+          <TextInput
+            placeholder="Cari nama racikan atau bahan..."
+            placeholderTextColor={palette.textTertiary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            style={styles.searchInput}
+            autoCorrect={false}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <X size={16} color={palette.textSecondary} strokeWidth={2} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* Category Pills Carousel */}
+      <View style={styles.categorySection}>
+        <FlatList
+          data={CATEGORIES}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(item) => item}
+          contentContainerStyle={styles.categoryList}
+          renderItem={({ item }) => {
+            const isActive = selectedCategory === item;
+            return (
+              <Pressable
+                onPress={() => {
+                  triggerHaptic();
+                  setSelectedCategory(item);
+                }}
+                style={[
+                  styles.categoryPill,
+                  isActive && styles.categoryPillActive,
+                ]}
+              >
+                <Typography
+                  variant="caption"
+                  style={[
+                    styles.categoryText,
+                    isActive && styles.categoryTextActive,
+                  ]}
+                >
+                  {item}
+                </Typography>
+              </Pressable>
+            );
+          }}
         />
       </View>
 
-      {/* Category Filter */}
-      <FlatList
-        data={categories}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={(item) => item.value}
-        contentContainerStyle={styles.categoryList}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={[
-              styles.categoryButton,
-              selectedCategory === item.value && styles.categoryButtonActive,
-            ]}
-            onPress={() => setSelectedCategory(item.value)}
-          >
-            <Text
-              style={[
-                styles.categoryButtonText,
-                selectedCategory === item.value && styles.categoryButtonTextActive,
-              ]}
-            >
-              {item.label}
-            </Text>
-          </TouchableOpacity>
-        )}
-      />
+      {/* Recipe Count Info */}
+      <View style={styles.metricRow}>
+        <Typography variant="caption" color="secondary" tabular>
+          {filteredRecipes.length} {filteredRecipes.length === 1 ? 'racikan' : 'racikan kopi'}
+        </Typography>
+      </View>
 
-      {/* List Resep */}
+      {/* Main List of Recipes */}
       <FlatList
         data={filteredRecipes}
         keyExtractor={(item) => item.id}
         renderItem={renderRecipeItem}
         contentContainerStyle={styles.listContent}
-        ListEmptyComponent={renderEmptyState}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <EmptyState
+            icon={<Coffee size={32} color={palette.textTertiary} strokeWidth={1.5} />}
+            title={searchQuery ? 'Tidak Ada Hasil' : 'Belum Ada Racikan'}
+            description={
+              searchQuery
+                ? `Tidak ditemukan resep dengan kata kunci "${searchQuery}". Coba kata kunci lain.`
+                : 'Mulai dokumentasikan rasio dan seduhan kopi favorit Anda sekarang.'
+            }
+            actionLabel={searchQuery ? 'Hapus Pencarian' : '+ Racik Resep Pertama'}
+            onAction={
+              searchQuery
+                ? () => setSearchQuery('')
+                : () => navigation.navigate('Form', {})
+            }
+          />
+        }
       />
 
-      {/* Floating Action Button (FAB) */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => navigation.navigate('Form', {})}
-      >
-        <Text style={styles.fabIcon}>+</Text>
-      </TouchableOpacity>
+      {/* Tactile Floating Action Button (FAB) */}
+      <View style={styles.fabContainer}>
+        <TouchableOpacity
+          onPress={() => {
+            triggerHaptic();
+            navigation.navigate('Form', {});
+          }}
+          activeOpacity={0.85}
+          style={styles.fab}
+        >
+          <Plus size={20} color={palette.textInverse} strokeWidth={2.5} />
+          <Typography variant="bodyMedium" color="inverse" style={styles.fabText}>
+            Racik Baru
+          </Typography>
+        </TouchableOpacity>
+      </View>
 
-      {/* Modal Konfirmasi Logout */}
+      {/* Logout Confirmation Modal */}
       <Modal
         visible={showLogoutModal}
         transparent
         animationType="fade"
         onRequestClose={() => setShowLogoutModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Konfirmasi</Text>
-            <Text style={styles.modalText}>Yakin ingin keluar dari akun ini?</Text>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonCancel]}
-                onPress={() => setShowLogoutModal(false)}
-              >
-                <Text style={styles.modalButtonTextCancel}>Batal</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonConfirm]}
-                onPress={handleLogout}
-              >
-                <Text style={styles.modalButtonTextConfirm}>Keluar</Text>
-              </TouchableOpacity>
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowLogoutModal(false)}
+        >
+          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalIconCircle}>
+              <LogOut size={24} color={palette.statusDanger} strokeWidth={2} />
             </View>
-          </View>
-        </View>
+
+            <Typography variant="h2" color="primary" align="center" style={styles.modalTitle}>
+              Keluar Akun
+            </Typography>
+
+            <Typography variant="callout" color="secondary" align="center" style={styles.modalSubtitle}>
+              Sesi Anda akan diakhiri. Koleksi resep Anda tetap aman tersimpan di perangkat ini.
+            </Typography>
+
+            <View style={styles.modalActions}>
+              <View style={styles.modalBtnHalf}>
+                <Button variant="secondary" onPress={() => setShowLogoutModal(false)}>
+                  Batal
+                </Button>
+              </View>
+              <View style={styles.modalBtnHalf}>
+                <Button variant="destructive" onPress={handleLogout}>
+                  Keluar
+                </Button>
+              </View>
+            </View>
+          </Pressable>
+        </Pressable>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: palette.canvas,
   },
-  header: {
+  topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: layout.screenPadding,
     paddingVertical: spacing.md,
-    backgroundColor: colors.primary,
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.textLight,
+  brandContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  brandIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: radii.md,
+    backgroundColor: palette.surface,
+    borderWidth: 1,
+    borderColor: palette.borderSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  brandTitle: {
+    letterSpacing: -0.4,
   },
   logoutButton: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: 8,
-  },
-  logoutText: {
-    color: colors.textLight,
-    fontSize: 12,
-  },
-  searchContainer: {
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  searchInput: {
-    backgroundColor: colors.card,
-    borderRadius: 10,
-    padding: spacing.md,
-    fontSize: 14,
+    width: 38,
+    height: 38,
+    borderRadius: radii.md,
+    backgroundColor: palette.surface,
     borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  categoryList: {
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.md,
-  },
-  categoryButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: 20,
-    backgroundColor: colors.card,
-    marginRight: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  categoryButtonActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  categoryButtonText: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  categoryButtonTextActive: {
-    color: colors.textLight,
-  },
-  listContent: {
-    padding: spacing.md,
-    paddingBottom: 100,
-  },
-  card: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  cardTried: {
-    opacity: 0.9,
-    backgroundColor: '#F8F5F0',
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    borderColor: palette.borderSubtle,
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    justifyContent: 'center',
   },
-  recipeName: {
-    ...typography.h3,
-    color: colors.text,
-    flex: 1,
-  },
-  recipeNameTried: {
-    textDecorationLine: 'line-through',
-    color: colors.textMuted,
-  },
-  favoriteButton: {
-    padding: 4,
-  },
-  star: {
-    fontSize: 20,
-  },
-  starFilled: {
-    color: colors.star,
-  },
-  categoryContainer: {
-    marginBottom: spacing.sm,
-  },
-  categoryBadge: {
-    fontSize: 11,
-    color: colors.primaryLight,
-    backgroundColor: colors.background,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: 4,
-    fontWeight: '700',
-  },
-  statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-  },
-  triedBadge: {
-    backgroundColor: '#D8F3DC',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  triedText: {
-    color: colors.success,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  notTriedBadge: {
-    backgroundColor: '#FEF3CD',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  notTriedText: {
-    color: '#D4A017',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  tryButton: {
-    paddingVertical: 4,
-    paddingHorizontal: spacing.sm,
-  },
-  tryText: {
-    color: colors.primary,
-    fontSize: 11,
-  },
-  ingredientsContainer: {
+  searchSection: {
+    paddingHorizontal: layout.screenPadding,
     marginTop: spacing.xs,
   },
-  ingredientsLabel: {
-    color: colors.textMuted,
-    fontSize: 11,
-  },
-  ingredientsText: {
-    color: colors.text,
-    fontSize: 12,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  searchContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 60,
+    backgroundColor: palette.surface,
+    borderRadius: radii.md,
+    borderWidth: strokes.hairline,
+    borderColor: palette.borderStrong,
+    height: 44,
+    paddingHorizontal: spacing.md,
   },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: spacing.sm,
-    opacity: 0.5,
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: palette.textPrimary,
+    marginLeft: spacing.sm,
+    paddingVertical: 0,
   },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
+  categorySection: {
+    marginTop: spacing.md,
+  },
+  categoryList: {
+    paddingHorizontal: layout.screenPadding,
+  },
+  categoryPill: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 7,
+    borderRadius: radii.round,
+    backgroundColor: palette.surface,
+    borderWidth: strokes.hairline,
+    borderColor: palette.borderSubtle,
+    marginRight: spacing.sm,
+  },
+  categoryPillActive: {
+    backgroundColor: palette.textPrimary,
+    borderColor: palette.textPrimary,
+  },
+  categoryText: {
+    fontWeight: '600',
+    color: palette.textSecondary,
+  },
+  categoryTextActive: {
+    color: palette.textInverse,
+  },
+  metricRow: {
+    paddingHorizontal: layout.screenPadding,
+    marginTop: spacing.md,
     marginBottom: spacing.xs,
   },
-  emptyText: {
-    fontSize: 14,
-    color: colors.textMuted,
-    marginBottom: spacing.lg,
+  listContent: {
+    paddingHorizontal: layout.screenPadding,
+    paddingBottom: 96, // Space for FAB
+    paddingTop: spacing.xs,
   },
-  addRecipeButton: {
-    backgroundColor: colors.accent,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: 12,
+  card: {
+    marginBottom: spacing.md,
   },
-  addRecipeText: {
-    color: colors.textLight,
-    fontSize: 14,
-    fontWeight: '700',
+  cardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  recipeTitle: {
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  favoriteButton: {
+    padding: spacing.xs,
+  },
+  badgesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  triedBadgeTouch: {
+    marginLeft: spacing.xs,
+  },
+  ingredientsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.xs,
+    paddingTop: spacing.xs,
+    borderTopWidth: strokes.hairline,
+    borderTopColor: palette.divider,
+  },
+  ingredientsPrefix: {
+    fontWeight: '600',
+    marginRight: spacing.xs,
+  },
+  ingredientsList: {
+    flex: 1,
+  },
+  fabContainer: {
+    position: 'absolute',
+    bottom: spacing.xxl,
+    right: layout.screenPadding,
   },
   fab: {
-    position: 'absolute',
-    bottom: spacing.lg,
-    right: spacing.lg,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: colors.primary,
+    backgroundColor: palette.accent,
+    borderRadius: radii.round,
+    paddingVertical: 13,
+    paddingHorizontal: 20,
+    elevation: 4,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 5,
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
   },
-  fabIcon: {
-    fontSize: 32,
-    color: colors.textLight,
-    fontWeight: '700',
+  fabText: {
+    marginLeft: spacing.xs,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(26, 20, 18, 0.45)',
     justifyContent: 'center',
     alignItems: 'center',
+    padding: layout.screenPadding,
   },
-  modalContent: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: spacing.lg,
-    width: '80%',
-    maxWidth: 320,
+  modalCard: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: palette.surface,
+    borderRadius: radii.xl,
+    padding: spacing.xl,
+    alignItems: 'center',
+    borderWidth: strokes.hairline,
+    borderColor: palette.borderSubtle,
+  },
+  modalIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: radii.round,
+    backgroundColor: palette.statusDangerBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: spacing.sm,
-    textAlign: 'center',
+    marginBottom: spacing.xs,
   },
-  modalText: {
-    fontSize: 14,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginBottom: spacing.lg,
+  modalSubtitle: {
+    lineHeight: 19,
+    marginBottom: spacing.xl,
   },
-  modalButtons: {
+  modalActions: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: spacing.sm,
+    width: '100%',
   },
-  modalButton: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: 8,
-    minWidth: 80,
-    alignItems: 'center',
-  },
-  modalButtonCancel: {
-    backgroundColor: colors.border,
-  },
-  modalButtonConfirm: {
-    backgroundColor: colors.danger,
-  },
-  modalButtonTextCancel: {
-    color: colors.text,
-    fontSize: 14,
-  },
-  modalButtonTextConfirm: {
-    color: colors.textLight,
-    fontSize: 14,
+  modalBtnHalf: {
+    flex: 1,
+    marginHorizontal: 4,
   },
 });
 

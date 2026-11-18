@@ -1,21 +1,21 @@
 import React, { useState } from 'react';
 import {
   View,
-  Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Coffee, Eye, EyeOff, Lock, User as UserIcon } from 'lucide-react-native';
 import { RootStackParamList } from '../types/navigation';
-import { colors, spacing, typography } from '../theme/colors';
+import { palette, spacing, layout } from '../theme/tokens';
+import { Typography, Input, Button } from '../components/common';
 import { useAuth } from '../context/AuthContext';
 import { getUsers } from '../storage';
+import { triggerHapticNotification } from '../utils/haptics';
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Login'>;
@@ -30,11 +30,10 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ username?: string; password?: string; general?: string }>({});
 
-  // Validasi field tidak boleh kosong
   const validate = (): boolean => {
     const newErrors: typeof errors = {};
-    if (!username.trim()) newErrors.username = 'Username tidak boleh kosong';
-    if (!password) newErrors.password = 'Password tidak boleh kosong';
+    if (!username.trim()) newErrors.username = 'Masukkan username akun Anda';
+    if (!password) newErrors.password = 'Masukkan password akun Anda';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -45,8 +44,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
     setIsSubmitting(true);
     setErrors({});
 
-    // Simulasi loading 1 detik
-    await new Promise((res) => setTimeout(res, 1000));
+    await new Promise((res) => setTimeout(res, 400));
 
     const users = await getUsers();
     const found = users.find(
@@ -54,198 +52,172 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
     );
 
     if (!found) {
-      setErrors({ general: 'Username atau password salah' });
+      triggerHapticNotification(false ? undefined : 2 as any); // Warning/Error
+      setErrors({ general: 'Username atau password tidak cocok.' });
       setIsSubmitting(false);
       return;
     }
 
+    triggerHapticNotification();
     await login(found.id, found.username);
     setIsSubmitting(false);
-    // AuthContext akan memperbarui state, navigasi diurus di AppNavigator
+    navigation.replace('Home');
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.wrapper}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        {/* Header */}
-        <Text style={styles.logo}>☕</Text>
-        <Text style={styles.title}>Masuk</Text>
-        <Text style={styles.subtitle}>Selamat datang kembali!</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header Section */}
+          <View style={styles.header}>
+            <View style={styles.brandIconContainer}>
+              <Coffee size={28} color={palette.accent} strokeWidth={2} />
+            </View>
+            <Typography variant="display" color="primary" style={styles.title}>
+              Masuk
+            </Typography>
+            <Typography variant="callout" color="secondary" style={styles.subtitle}>
+              Buka kembali koleksi racikan dan catatan seduh kopi Anda.
+            </Typography>
+          </View>
 
-        {/* Pesan error umum */}
-        {errors.general && <Text style={styles.errorGeneral}>{errors.general}</Text>}
+          {/* General Error Banner */}
+          {errors.general && (
+            <View style={styles.errorBanner}>
+              <Typography variant="caption" color="danger">
+                {errors.general}
+              </Typography>
+            </View>
+          )}
 
-        {/* Input Username */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Username</Text>
-          <TextInput
-            style={[styles.input, errors.username && styles.inputError]}
-            placeholder="Masukkan username"
-            placeholderTextColor={colors.textMuted}
-            value={username}
-            onChangeText={setUsername}
-            autoCapitalize="none"
-          />
-          {errors.username && <Text style={styles.errorText}>{errors.username}</Text>}
-        </View>
-
-        {/* Input Password */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Password</Text>
-          <View style={[styles.passwordContainer, errors.password && styles.inputError]}>
-            <TextInput
-              style={styles.passwordInput}
-              placeholder="Masukkan password"
-              placeholderTextColor={colors.textMuted}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={hidePassword}
+          {/* Form */}
+          <View style={styles.formSection}>
+            <Input
+              label="Username"
+              placeholder="Contoh: barista_harian"
+              value={username}
+              onChangeText={(text) => {
+                setUsername(text);
+                if (errors.username) setErrors((prev) => ({ ...prev, username: undefined }));
+              }}
+              autoCapitalize="none"
+              autoCorrect={false}
+              error={errors.username}
+              trailingIcon={<UserIcon size={18} color={palette.textTertiary} strokeWidth={1.75} />}
             />
-            {/* Toggle tampilkan/sembunyikan password */}
-            <TouchableOpacity onPress={() => setHidePassword(!hidePassword)} style={styles.eyeButton}>
-              <Text style={styles.eyeIcon}>{hidePassword ? '👁️' : '🙈'}</Text>
+
+            <Input
+              label="Password"
+              placeholder="Masukkan password"
+              value={password}
+              onChangeText={(text) => {
+                setPassword(text);
+                if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
+              }}
+              secureTextEntry={hidePassword}
+              error={errors.password}
+              trailingIcon={
+                hidePassword ? (
+                  <EyeOff size={18} color={palette.textTertiary} strokeWidth={1.75} />
+                ) : (
+                  <Eye size={18} color={palette.accent} strokeWidth={1.75} />
+                )
+              }
+              onTrailingIconPress={() => setHidePassword(!hidePassword)}
+            />
+
+            <View style={styles.submitContainer}>
+              <Button
+                variant="primary"
+                onPress={handleLogin}
+                loading={isSubmitting}
+              >
+                Masuk ke Akun
+              </Button>
+            </View>
+          </View>
+
+          {/* Register Link Footer */}
+          <View style={styles.footer}>
+            <Typography variant="callout" color="secondary">
+              Belum memiliki akun?{' '}
+            </Typography>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Register')}
+              hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
+            >
+              <Typography variant="calloutMedium" color="accent">
+                Daftar Sekarang
+              </Typography>
             </TouchableOpacity>
           </View>
-          {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
-        </View>
-
-        {/* Tombol Masuk */}
-        <TouchableOpacity
-          style={[styles.button, isSubmitting && styles.buttonDisabled]}
-          onPress={handleLogin}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator color={colors.textLight} />
-          ) : (
-            <Text style={styles.buttonText}>Masuk</Text>
-          )}
-        </TouchableOpacity>
-
-        {/* Link ke Register */}
-        <TouchableOpacity onPress={() => navigation.navigate('Register')} style={styles.linkContainer}>
-          <Text style={styles.linkText}>
-            Belum punya akun?{' '}
-            <Text style={styles.linkBold}>Daftar di sini</Text>
-          </Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  wrapper: {
+  safeArea: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: palette.canvas,
   },
-  container: {
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: spacing.lg,
+    paddingHorizontal: layout.screenPadding,
+    paddingVertical: spacing.xxl,
   },
-  logo: {
-    fontSize: 56,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
+  header: {
+    marginBottom: spacing.xxl,
   },
-  title: {
-    ...typography.h1,
-    color: colors.primary,
-    textAlign: 'center',
-  },
-  subtitle: {
-    ...typography.body,
-    color: colors.textMuted,
-    textAlign: 'center',
+  brandIconContainer: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: palette.surface,
+    borderWidth: 1,
+    borderColor: palette.borderSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: spacing.lg,
   },
-  errorGeneral: {
-    backgroundColor: '#FDECEA',
-    color: colors.danger,
-    padding: spacing.md,
-    borderRadius: 8,
-    textAlign: 'center',
-    marginBottom: spacing.md,
-    fontWeight: '600',
-  },
-  inputGroup: {
-    marginBottom: spacing.md,
-  },
-  label: {
-    ...typography.h3,
-    color: colors.text,
+  title: {
     marginBottom: spacing.xs,
   },
-  input: {
-    backgroundColor: colors.inputBg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    padding: spacing.md,
-    fontSize: 15,
-    color: colors.text,
+  subtitle: {
+    lineHeight: 20,
   },
-  inputError: {
-    borderColor: colors.danger,
+  errorBanner: {
+    backgroundColor: palette.statusDangerBg,
+    borderRadius: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(179, 57, 53, 0.25)',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.lg,
   },
-  passwordContainer: {
+  formSection: {
+    marginBottom: spacing.xl,
+  },
+  submitContainer: {
+    marginTop: spacing.sm,
+  },
+  footer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.inputBg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  passwordInput: {
-    flex: 1,
-    padding: spacing.md,
-    fontSize: 15,
-    color: colors.text,
-  },
-  eyeButton: {
-    padding: spacing.md,
-  },
-  eyeIcon: {
-    fontSize: 18,
-  },
-  errorText: {
-    color: colors.danger,
-    fontSize: 12,
-    marginTop: 4,
-  },
-  button: {
-    backgroundColor: colors.primary,
-    padding: spacing.md,
-    borderRadius: 12,
+    justifyContent: 'center',
     alignItems: 'center',
     marginTop: spacing.md,
-    height: 50,
-    justifyContent: 'center',
-  },
-  buttonDisabled: {
-    backgroundColor: colors.primaryLight,
-  },
-  buttonText: {
-    color: colors.textLight,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  linkContainer: {
-    marginTop: spacing.lg,
-    alignItems: 'center',
-  },
-  linkText: {
-    color: colors.textMuted,
-    fontSize: 14,
-  },
-  linkBold: {
-    color: colors.primaryLight,
-    fontWeight: '700',
   },
 });
 

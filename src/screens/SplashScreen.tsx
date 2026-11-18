@@ -1,8 +1,10 @@
 import React, { useEffect } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Coffee } from 'lucide-react-native';
 import { RootStackParamList } from '../types/navigation';
-import { colors } from '../theme/colors';
+import { palette, spacing } from '../theme/tokens';
+import { Typography } from '../components/common/Typography';
 import { useAuth } from '../context/AuthContext';
 
 type Props = {
@@ -12,9 +14,8 @@ type Props = {
 const SplashScreen: React.FC<Props> = ({ navigation }) => {
   const { isLoggedIn, isLoading } = useAuth();
 
-  // Setelah cek sesi selesai, arahkan ke layar yang sesuai
   useEffect(() => {
-    if (isLoading) return; // Tunggu pengecekan sesi selesai
+    if (isLoading) return;
 
     const timer = setTimeout(() => {
       if (isLoggedIn) {
@@ -22,24 +23,28 @@ const SplashScreen: React.FC<Props> = ({ navigation }) => {
       } else {
         navigation.replace('Login');
       }
-    }, 2000); // Splash tampil minimal 2 detik
+    }, 1500);
 
     return () => clearTimeout(timer);
   }, [isLoggedIn, isLoading, navigation]);
 
   return (
     <View style={styles.container}>
-      {/* Ikon kopi sederhana dari emoji */}
-      <Text style={styles.logo}>☕</Text>
-      <Text style={styles.appName}>Catatan Resep Kopi</Text>
-      <Text style={styles.tagline}>Racik favoritmu, catat selalu</Text>
+      <View style={styles.logoBadge}>
+        <Coffee size={44} color={palette.accent} strokeWidth={1.75} />
+      </View>
 
-      {/* Loading spinner */}
-      <ActivityIndicator
-        size="large"
-        color={colors.accent}
-        style={styles.spinner}
-      />
+      <Typography variant="display" color="primary" align="center" style={styles.brandTitle}>
+        BrewLog
+      </Typography>
+
+      <Typography variant="callout" color="secondary" align="center" style={styles.tagline}>
+        Catatan Seduh & Resep Kopi Personal
+      </Typography>
+
+      <View style={styles.spinnerContainer}>
+        <ActivityIndicator size="small" color={palette.accent} />
+      </View>
     </View>
   );
 };
@@ -47,31 +52,32 @@ const SplashScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primary,
+    backgroundColor: palette.canvas,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    padding: spacing.xxl,
   },
-  logo: {
-    fontSize: 72,
-    marginBottom: 16,
+  logoBadge: {
+    width: 88,
+    height: 88,
+    borderRadius: 24,
+    backgroundColor: palette.surface,
+    borderWidth: 1,
+    borderColor: palette.borderSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xl,
   },
-  appName: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: colors.textLight,
-    textAlign: 'center',
-    letterSpacing: 0.5,
+  brandTitle: {
+    marginBottom: spacing.xs,
+    letterSpacing: -0.6,
   },
   tagline: {
-    fontSize: 14,
-    color: colors.accent,
-    marginTop: 8,
-    textAlign: 'center',
-    fontStyle: 'italic',
+    letterSpacing: -0.2,
   },
-  spinner: {
-    marginTop: 48,
+  spinnerContainer: {
+    position: 'absolute',
+    bottom: 56,
   },
 });
 

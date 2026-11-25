@@ -1,44 +1,44 @@
-import { StyleSheet, Platform } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 /**
- * BrewLog Human-Crafted Design Tokens
- * Philosophy: Editorial Warm Minimalist / Artisanal Craft
- * 80/15/5 Color Discipline: Warm Stone Canvas + Crisp Surfaces + Terracotta Accent
+ * BrewLog Design Tokens — Editorial Coffee Journal
+ * Warm paper canvas, deep espresso ink, understated hairline rules.
  */
 
 export const palette = {
-  // Canvas & Surfaces (Warm organic neutrals)
-  canvas: '#F7F5F0',          // Warm natural paper/linen background
-  surface: '#FFFFFF',         // Crisp elevated sheet surface
-  surfaceRaised: '#FFFFFF',   // Modals, sheets
-  surfaceSubdued: '#EFECE4',  // Input containers, category chips, subtle fills
-  surfaceHighlight: '#E8E3D8',
+  // Canvas & Surfaces
+  canvas: '#FAF8F5',          // Warm off-white paper
+  surface: '#FFFFFF',         // Pure sheet for inputs / modals
+  surfaceRaised: '#FFFFFF',
+  surfaceSubdued: '#F1EDE6',  // Quiet warm stone fill
+  surfaceHighlight: '#E6E0D6',
 
   // Borders & Dividers
-  borderSubtle: 'rgba(38, 28, 22, 0.08)',
-  borderStrong: 'rgba(38, 28, 22, 0.16)',
-  divider: 'rgba(38, 28, 22, 0.06)',
+  borderSubtle: 'rgba(26, 23, 21, 0.08)',
+  borderStrong: 'rgba(26, 23, 21, 0.16)',
+  divider: '#E8E3DA',
 
   // Typography & Content
-  textPrimary: '#1E1815',     // Deep roasted espresso
-  textSecondary: '#665C54',   // Muted roasted almond
-  textTertiary: '#9E948B',    // Soft stone / placeholder
-  textInverse: '#FFFFFF',     // Clean white on dark badges/buttons
+  textPrimary: '#1A1715',     // Deep espresso ink
+  textSecondary: '#686058',   // Warm charcoal
+  textTertiary: '#9E958C',    // Stone gray
+  textInverse: '#FAF8F5',
 
-  // 5% Focal Accent (Terracotta Roast)
-  accent: '#BC5D2E',          // Rich earthy terracotta
-  accentLight: '#F7EDE6',     // Tinted pill/active background
-  accentPressed: '#9E4A20',   // Darker press state
+  // Brand Focal Accent (Single intentional accent + deep ink CTA)
+  ink: '#1A1715',             // Primary action ink
+  accent: '#B8532A',          // Burnt terracotta
+  accentLight: '#F5EAE4',
+  accentPressed: '#96411E',
 
-  // Semantic Colors (Desaturated, human-friendly tones)
-  statusSuccess: '#3F6B4D',   // Matcha forest
-  statusSuccessBg: '#EDF4EE',
-  statusWarning: '#B8782E',   // Roasted caramel
-  statusWarningBg: '#FAF3EA',
-  statusDanger: '#B33935',    // Raw brick red
-  statusDangerBg: '#FAEDED',
-  statusStar: '#D97706',      // Warm Ochre gold
-  statusStarBg: '#FEF8EB',
+  // Semantic Colors (Muted & natural)
+  statusSuccess: '#3A6647',   // Muted sage green
+  statusSuccessBg: '#ECF3EE',
+  statusWarning: '#A86B24',
+  statusWarningBg: '#F9F1E6',
+  statusDanger: '#B03A35',    // Muted brick red
+  statusDangerBg: '#F9ECEB',
+  statusStar: '#C9821E',      // Warm amber
+  statusStarBg: '#FCF5E8',
 };
 
 export const spacing = {
@@ -57,18 +57,17 @@ export const radii = {
   xs: 4,
   sm: 6,
   md: 10,
-  lg: 14,
-  xl: 18,
+  lg: 12,
+  xl: 16,
   round: 9999,
 } as const;
 
 export const typography = {
-  // Display & Headers
   display: {
-    fontSize: 32,
-    lineHeight: 38,
+    fontSize: 30,
+    lineHeight: 36,
     fontWeight: '700' as const,
-    letterSpacing: -0.8,
+    letterSpacing: -0.7,
     color: palette.textPrimary,
   },
   h1: {
@@ -87,13 +86,11 @@ export const typography = {
   },
   h3: {
     fontSize: 17,
-    lineHeight: 22,
+    lineHeight: 23,
     fontWeight: '600' as const,
     letterSpacing: -0.2,
     color: palette.textPrimary,
   },
-  
-  // Body copy
   body: {
     fontSize: 15,
     lineHeight: 22,
@@ -118,8 +115,6 @@ export const typography = {
     fontWeight: '500' as const,
     color: palette.textPrimary,
   },
-
-  // Supporting & Badges
   subheadline: {
     fontSize: 13,
     lineHeight: 18,
@@ -133,22 +128,19 @@ export const typography = {
     color: palette.textPrimary,
   },
   caption: {
-    fontSize: 11,
-    lineHeight: 15,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '500' as const,
-    letterSpacing: 0.3,
     color: palette.textTertiary,
   },
   overline: {
-    fontSize: 10,
+    fontSize: 11,
     lineHeight: 14,
-    fontWeight: '700' as const,
-    letterSpacing: 0.8,
+    fontWeight: '600' as const,
+    letterSpacing: 0.7,
     textTransform: 'uppercase' as const,
     color: palette.textSecondary,
   },
-
-  // Numbers & Metrics (always tabular)
   tabular: {
     fontVariant: ['tabular-nums' as const],
   },
@@ -157,15 +149,14 @@ export const typography = {
 export const strokes = {
   hairline: StyleSheet.hairlineWidth,
   thin: 1,
-  focused: 2,
+  focused: 1.5,
 };
 
 export const layout = {
-  screenPadding: spacing.xl, // 20px comfortable gutter
-  cardPadding: spacing.lg,   // 16px
-  inputHeight: 48,
+  screenPadding: spacing.xl, // 20px
+  cardPadding: spacing.lg,
+  inputHeight: 46,
   buttonHeight: 48,
-  compactButtonHeight: 36,
+  compactButtonHeight: 38,
   touchTargetMin: 44,
 };
-

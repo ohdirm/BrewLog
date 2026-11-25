@@ -18,13 +18,11 @@ import {
   LogOut,
   Star,
   Check,
-  Clock,
-  Sparkles,
 } from 'lucide-react-native';
 import { RootStackParamList } from '../types/navigation';
 import { Recipe, RecipeCategory } from '../types';
 import { palette, spacing, radii, strokes, layout } from '../theme/tokens';
-import { Typography, Badge, SurfaceCard, Button, EmptyState } from '../components/common';
+import { Typography, Button, EmptyState } from '../components/common';
 import { useAuth } from '../context/AuthContext';
 import { useRecipes } from '../context/RecipeContext';
 import { triggerHaptic } from '../utils/haptics';
@@ -48,7 +46,6 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const [selectedCategory, setSelectedCategory] = useState<RecipeCategory | 'Semua'>('Semua');
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  // Filter recipes based on query & category
   const filteredRecipes = useMemo(() => {
     return recipes.filter((recipe) => {
       const matchesSearch = recipe.name.toLowerCase().includes(searchQuery.toLowerCase().trim());
@@ -74,25 +71,37 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
     toggleTried(recipeId);
   };
 
-  const renderRecipeItem = ({ item }: { item: Recipe }) => {
+  const renderRecipeItem = ({ item, index }: { item: Recipe; index: number }) => {
+    const isLast = index === filteredRecipes.length - 1;
+    const ingredientSummary = item.ingredients
+      .slice(0, 3)
+      .map((ing) => `${ing.amount} ${ing.unit} ${ing.name}`)
+      .join(', ');
+
     return (
-      <SurfaceCard
-        onPress={() => navigation.navigate('Detail', { recipeId: item.id })}
-        style={styles.card}
+      <Pressable
+        onPress={() => {
+          triggerHaptic();
+          navigation.navigate('Detail', { recipeId: item.id });
+        }}
+        style={({ pressed }) => [
+          styles.row,
+          !isLast && styles.rowDivider,
+          pressed && styles.rowPressed,
+        ]}
       >
-        {/* Top Card Row: Title & Favorite Star */}
-        <View style={styles.cardHeaderRow}>
+        {/* Title & Favorite */}
+        <View style={styles.rowHeader}>
           <Typography variant="h3" color="primary" numberOfLines={1} style={styles.recipeTitle}>
             {item.name}
           </Typography>
 
           <TouchableOpacity
             onPress={() => handleToggleFavorite(item.id)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            style={styles.favoriteButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Star
-              size={20}
+              size={18}
               color={item.isFavorite ? palette.statusStar : palette.textTertiary}
               fill={item.isFavorite ? palette.statusStar : 'transparent'}
               strokeWidth={1.75}
@@ -100,79 +109,60 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Badges Row: Category & Tried Status */}
-        <View style={styles.badgesRow}>
-          <Badge
-            label={item.category}
-            tone={
-              item.category === 'Kopi Panas'
-                ? 'accent'
-                : item.category === 'Kopi Dingin'
-                ? 'warning'
-                : 'neutral'
-            }
-          />
+        {/* Quiet inline metadata */}
+        <View style={styles.metaRow}>
+          <Typography variant="subheadline" color="secondary" tabular>
+            {item.category} · {item.ingredients.length} bahan
+          </Typography>
 
           <TouchableOpacity
             onPress={() => handleToggleTried(item.id)}
-            style={styles.triedBadgeTouch}
-            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={styles.statusButton}
           >
-            <Badge
-              label={item.isTried ? 'Sudah dicoba' : 'Belum dicoba'}
-              tone={item.isTried ? 'success' : 'neutral'}
-              icon={
-                item.isTried ? (
-                  <Check size={11} color={palette.statusSuccess} strokeWidth={2.5} />
-                ) : (
-                  <Clock size={11} color={palette.textSecondary} strokeWidth={2} />
-                )
-              }
-            />
+            {item.isTried ? (
+              <View style={styles.statusInline}>
+                <Check size={13} color={palette.statusSuccess} strokeWidth={2.25} />
+                <Typography variant="caption" color="success" style={styles.statusLabel}>
+                  Sudah dicoba
+                </Typography>
+              </View>
+            ) : (
+              <Typography variant="caption" color="tertiary">
+                Belum dicoba
+              </Typography>
+            )}
           </TouchableOpacity>
         </View>
 
-        {/* Ingredients Quick Preview (Tabular numbers) */}
+        {/* Ingredient preview */}
         {item.ingredients.length > 0 && (
-          <View style={styles.ingredientsRow}>
-            <Typography variant="caption" color="secondary" style={styles.ingredientsPrefix}>
-              Bahan:
-            </Typography>
-            <Typography
-              variant="caption"
-              color="primary"
-              tabular
-              numberOfLines={1}
-              style={styles.ingredientsList}
-            >
-              {item.ingredients
-                .slice(0, 3)
-                .map((ing) => `${ing.amount} ${ing.unit} ${ing.name}`)
-                .join(' • ')}
-              {item.ingredients.length > 3 ? ' ...' : ''}
-            </Typography>
-          </View>
+          <Typography
+            variant="subheadline"
+            color="tertiary"
+            tabular
+            numberOfLines={1}
+            style={styles.ingredientPreview}
+          >
+            {ingredientSummary}
+            {item.ingredients.length > 3 ? ', ...' : ''}
+          </Typography>
         )}
-      </SurfaceCard>
+      </Pressable>
     );
   };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      {/* Top Application Bar */}
+      {/* Editorial Header */}
       <View style={styles.topBar}>
-        <View style={styles.brandContainer}>
-          <View style={styles.brandIcon}>
-            <Coffee size={20} color={palette.accent} strokeWidth={2} />
-          </View>
-          <View>
-            <Typography variant="h2" color="primary" style={styles.brandTitle}>
-              BrewLog
-            </Typography>
-            <Typography variant="caption" color="secondary">
-              Barista @{username || 'Pengguna'}
-            </Typography>
-          </View>
+        <View>
+          <Typography variant="h1" color="primary">
+            Catatan Seduh
+          </Typography>
+          <Typography variant="caption" color="secondary" tabular>
+            @{username || 'barista'} · {filteredRecipes.length} resep
+          </Typography>
         </View>
 
         <TouchableOpacity
@@ -181,18 +171,18 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             setShowLogoutModal(true);
           }}
           style={styles.logoutButton}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <LogOut size={18} color={palette.textSecondary} strokeWidth={1.75} />
+          <LogOut size={19} color={palette.textSecondary} strokeWidth={1.75} />
         </TouchableOpacity>
       </View>
 
-      {/* Search Input Bar */}
+      {/* Quiet Search Input */}
       <View style={styles.searchSection}>
         <View style={styles.searchContainer}>
-          <Search size={18} color={palette.textTertiary} strokeWidth={1.75} />
+          <Search size={16} color={palette.textTertiary} strokeWidth={1.75} />
           <TextInput
-            placeholder="Cari nama racikan atau bahan..."
+            placeholder="Cari resep atau bahan..."
             placeholderTextColor={palette.textTertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -210,14 +200,14 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         </View>
       </View>
 
-      {/* Category Pills Carousel */}
-      <View style={styles.categorySection}>
+      {/* Clean Underline Category Tabs */}
+      <View style={styles.tabsWrapper}>
         <FlatList
           data={CATEGORIES}
           horizontal
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => item}
-          contentContainerStyle={styles.categoryList}
+          contentContainerStyle={styles.tabsList}
           renderItem={({ item }) => {
             const isActive = selectedCategory === item;
             return (
@@ -226,17 +216,11 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
                   triggerHaptic();
                   setSelectedCategory(item);
                 }}
-                style={[
-                  styles.categoryPill,
-                  isActive && styles.categoryPillActive,
-                ]}
+                style={[styles.tabItem, isActive && styles.tabItemActive]}
               >
                 <Typography
-                  variant="caption"
-                  style={[
-                    styles.categoryText,
-                    isActive && styles.categoryTextActive,
-                  ]}
+                  variant="calloutMedium"
+                  style={[styles.tabText, isActive && styles.tabTextActive]}
                 >
                   {item}
                 </Typography>
@@ -246,14 +230,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         />
       </View>
 
-      {/* Recipe Count Info */}
-      <View style={styles.metricRow}>
-        <Typography variant="caption" color="secondary" tabular>
-          {filteredRecipes.length} {filteredRecipes.length === 1 ? 'racikan' : 'racikan kopi'}
-        </Typography>
-      </View>
-
-      {/* Main List of Recipes */}
+      {/* Recipe List */}
       <FlatList
         data={filteredRecipes}
         keyExtractor={(item) => item.id}
@@ -262,14 +239,14 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <EmptyState
-            icon={<Coffee size={32} color={palette.textTertiary} strokeWidth={1.5} />}
-            title={searchQuery ? 'Tidak Ada Hasil' : 'Belum Ada Racikan'}
+            icon={<Coffee size={28} color={palette.textTertiary} strokeWidth={1.5} />}
+            title={searchQuery ? 'Tidak ditemukan' : 'Belum ada resep'}
             description={
               searchQuery
-                ? `Tidak ditemukan resep dengan kata kunci "${searchQuery}". Coba kata kunci lain.`
-                : 'Mulai dokumentasikan rasio dan seduhan kopi favorit Anda sekarang.'
+                ? `Tidak ada resep yang cocok dengan "${searchQuery}".`
+                : 'Mulai catat rasio dan langkah seduh kopi favoritmu.'
             }
-            actionLabel={searchQuery ? 'Hapus Pencarian' : '+ Racik Resep Pertama'}
+            actionLabel={searchQuery ? 'Reset Pencarian' : 'Tambah Resep'}
             onAction={
               searchQuery
                 ? () => setSearchQuery('')
@@ -279,22 +256,17 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         }
       />
 
-      {/* Tactile Floating Action Button (FAB) */}
-      <View style={styles.fabContainer}>
-        <TouchableOpacity
-          onPress={() => {
-            triggerHaptic();
-            navigation.navigate('Form', {});
-          }}
-          activeOpacity={0.85}
-          style={styles.fab}
-        >
-          <Plus size={20} color={palette.textInverse} strokeWidth={2.5} />
-          <Typography variant="bodyMedium" color="inverse" style={styles.fabText}>
-            Racik Baru
-          </Typography>
-        </TouchableOpacity>
-      </View>
+      {/* Minimal Circular FAB */}
+      <TouchableOpacity
+        onPress={() => {
+          triggerHaptic();
+          navigation.navigate('Form', {});
+        }}
+        activeOpacity={0.85}
+        style={styles.fab}
+      >
+        <Plus size={24} color={palette.textInverse} strokeWidth={2} />
+      </TouchableOpacity>
 
       {/* Logout Confirmation Modal */}
       <Modal
@@ -308,16 +280,11 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           onPress={() => setShowLogoutModal(false)}
         >
           <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalIconCircle}>
-              <LogOut size={24} color={palette.statusDanger} strokeWidth={2} />
-            </View>
-
-            <Typography variant="h2" color="primary" align="center" style={styles.modalTitle}>
-              Keluar Akun
+            <Typography variant="h2" color="primary" style={styles.modalTitle}>
+              Keluar dari akun?
             </Typography>
-
-            <Typography variant="callout" color="secondary" align="center" style={styles.modalSubtitle}>
-              Sesi Anda akan diakhiri. Koleksi resep Anda tetap aman tersimpan di perangkat ini.
+            <Typography variant="callout" color="secondary" style={styles.modalSubtitle}>
+              Semua catatan resepmu tetap tersimpan di perangkat ini.
             </Typography>
 
             <View style={styles.modalActions}>
@@ -349,35 +316,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: layout.screenPadding,
-    paddingVertical: spacing.md,
-  },
-  brandContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  brandIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: radii.md,
-    backgroundColor: palette.surface,
-    borderWidth: 1,
-    borderColor: palette.borderSubtle,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
-  },
-  brandTitle: {
-    letterSpacing: -0.4,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
   },
   logoutButton: {
-    width: 38,
-    height: 38,
-    borderRadius: radii.md,
-    backgroundColor: palette.surface,
-    borderWidth: 1,
-    borderColor: palette.borderSubtle,
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: spacing.xs,
   },
   searchSection: {
     paddingHorizontal: layout.screenPadding,
@@ -386,11 +329,9 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: palette.surface,
+    backgroundColor: palette.surfaceSubdued,
     borderRadius: radii.md,
-    borderWidth: strokes.hairline,
-    borderColor: palette.borderStrong,
-    height: 44,
+    height: 42,
     paddingHorizontal: spacing.md,
   },
   searchInput: {
@@ -400,133 +341,110 @@ const styles = StyleSheet.create({
     marginLeft: spacing.sm,
     paddingVertical: 0,
   },
-  categorySection: {
+  tabsWrapper: {
     marginTop: spacing.md,
+    borderBottomWidth: strokes.hairline,
+    borderBottomColor: palette.divider,
   },
-  categoryList: {
+  tabsList: {
     paddingHorizontal: layout.screenPadding,
   },
-  categoryPill: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: 7,
-    borderRadius: radii.round,
-    backgroundColor: palette.surface,
-    borderWidth: strokes.hairline,
-    borderColor: palette.borderSubtle,
-    marginRight: spacing.sm,
+  tabItem: {
+    paddingVertical: spacing.sm,
+    marginRight: spacing.xl,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
   },
-  categoryPillActive: {
-    backgroundColor: palette.textPrimary,
-    borderColor: palette.textPrimary,
+  tabItemActive: {
+    borderBottomColor: palette.accent,
   },
-  categoryText: {
+  tabText: {
+    color: palette.textTertiary,
+  },
+  tabTextActive: {
+    color: palette.textPrimary,
     fontWeight: '600',
-    color: palette.textSecondary,
-  },
-  categoryTextActive: {
-    color: palette.textInverse,
-  },
-  metricRow: {
-    paddingHorizontal: layout.screenPadding,
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
   },
   listContent: {
     paddingHorizontal: layout.screenPadding,
-    paddingBottom: 96, // Space for FAB
-    paddingTop: spacing.xs,
+    paddingBottom: 96,
   },
-  card: {
-    marginBottom: spacing.md,
+  row: {
+    paddingVertical: spacing.lg,
   },
-  cardHeaderRow: {
+  rowDivider: {
+    borderBottomWidth: strokes.hairline,
+    borderBottomColor: palette.divider,
+  },
+  rowPressed: {
+    opacity: 0.65,
+  },
+  rowHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: 4,
   },
   recipeTitle: {
     flex: 1,
-    marginRight: spacing.sm,
+    marginRight: spacing.md,
   },
-  favoriteButton: {
-    padding: spacing.xs,
+  metaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
   },
-  badgesRow: {
+  statusButton: {
+    paddingVertical: 2,
+  },
+  statusInline: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.sm,
   },
-  triedBadgeTouch: {
-    marginLeft: spacing.xs,
+  statusLabel: {
+    marginLeft: 4,
   },
-  ingredientsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.xs,
-    paddingTop: spacing.xs,
-    borderTopWidth: strokes.hairline,
-    borderTopColor: palette.divider,
+  ingredientPreview: {
+    marginTop: 2,
   },
-  ingredientsPrefix: {
-    fontWeight: '600',
-    marginRight: spacing.xs,
-  },
-  ingredientsList: {
-    flex: 1,
-  },
-  fabContainer: {
+  fab: {
     position: 'absolute',
     bottom: spacing.xxl,
     right: layout.screenPadding,
-  },
-  fab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: palette.accent,
+    width: 54,
+    height: 54,
     borderRadius: radii.round,
-    paddingVertical: 13,
-    paddingHorizontal: 20,
-    elevation: 4,
+    backgroundColor: palette.ink,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 3,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-  },
-  fabText: {
-    marginLeft: spacing.xs,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.16,
+    shadowRadius: 6,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(26, 20, 18, 0.45)',
+    backgroundColor: 'rgba(26, 23, 21, 0.45)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: layout.screenPadding,
   },
   modalCard: {
     width: '100%',
-    maxWidth: 340,
+    maxWidth: 330,
     backgroundColor: palette.surface,
-    borderRadius: radii.xl,
+    borderRadius: radii.lg,
     padding: spacing.xl,
-    alignItems: 'center',
     borderWidth: strokes.hairline,
     borderColor: palette.borderSubtle,
-  },
-  modalIconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: radii.round,
-    backgroundColor: palette.statusDangerBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
   },
   modalTitle: {
     marginBottom: spacing.xs,
   },
   modalSubtitle: {
-    lineHeight: 19,
+    lineHeight: 20,
     marginBottom: spacing.xl,
   },
   modalActions: {

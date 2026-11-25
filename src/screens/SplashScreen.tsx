@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Coffee } from 'lucide-react-native';
 import { RootStackParamList } from '../types/navigation';
 import { palette, spacing } from '../theme/tokens';
 import { Typography } from '../components/common/Typography';
@@ -23,27 +22,28 @@ const SplashScreen: React.FC<Props> = ({ navigation }) => {
       } else {
         navigation.replace('Login');
       }
-    }, 1500);
+    }, 1200);
 
     return () => clearTimeout(timer);
   }, [isLoggedIn, isLoading, navigation]);
 
   return (
     <View style={styles.container}>
-      <View style={styles.logoBadge}>
-        <Coffee size={44} color={palette.accent} strokeWidth={1.75} />
+      <View style={styles.centerBlock}>
+        <Typography variant="overline" color="accent" align="center" style={styles.overline}>
+          Jurnal Kopi
+        </Typography>
+        <Typography variant="display" color="primary" align="center" style={styles.brandTitle}>
+          BrewLog
+        </Typography>
+        <View style={styles.rule} />
+        <Typography variant="subheadline" color="secondary" align="center">
+          Catatan rasio & seduh harian
+        </Typography>
       </View>
 
-      <Typography variant="display" color="primary" align="center" style={styles.brandTitle}>
-        BrewLog
-      </Typography>
-
-      <Typography variant="callout" color="secondary" align="center" style={styles.tagline}>
-        Catatan Seduh & Resep Kopi Personal
-      </Typography>
-
       <View style={styles.spinnerContainer}>
-        <ActivityIndicator size="small" color={palette.accent} />
+        <ActivityIndicator size="small" color={palette.textTertiary} />
       </View>
     </View>
   );
@@ -57,27 +57,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: spacing.xxl,
   },
-  logoBadge: {
-    width: 88,
-    height: 88,
-    borderRadius: 24,
-    backgroundColor: palette.surface,
-    borderWidth: 1,
-    borderColor: palette.borderSubtle,
+  centerBlock: {
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xl,
+  },
+  overline: {
+    marginBottom: spacing.xs,
   },
   brandTitle: {
-    marginBottom: spacing.xs,
-    letterSpacing: -0.6,
+    fontSize: 34,
+    lineHeight: 40,
+    letterSpacing: -0.9,
   },
-  tagline: {
-    letterSpacing: -0.2,
+  rule: {
+    width: 28,
+    height: 1.5,
+    backgroundColor: palette.accent,
+    marginVertical: spacing.md,
   },
   spinnerContainer: {
     position: 'absolute',
-    bottom: 56,
+    bottom: 52,
   },
 });
 

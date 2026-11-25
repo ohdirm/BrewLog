@@ -9,13 +9,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Coffee, Eye, EyeOff, Lock, User as UserIcon } from 'lucide-react-native';
+import { Eye, EyeOff } from 'lucide-react-native';
 import { RootStackParamList } from '../types/navigation';
-import { palette, spacing, layout } from '../theme/tokens';
+import { palette, spacing, layout, strokes } from '../theme/tokens';
 import { Typography, Input, Button } from '../components/common';
 import { useAuth } from '../context/AuthContext';
 import { getUsers } from '../storage';
 import { triggerHapticNotification } from '../utils/haptics';
+import * as Haptics from 'expo-haptics';
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Login'>;
@@ -32,8 +33,8 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
   const validate = (): boolean => {
     const newErrors: typeof errors = {};
-    if (!username.trim()) newErrors.username = 'Masukkan username akun Anda';
-    if (!password) newErrors.password = 'Masukkan password akun Anda';
+    if (!username.trim()) newErrors.username = 'Username wajib diisi';
+    if (!password) newErrors.password = 'Password wajib diisi';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -44,7 +45,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
     setIsSubmitting(true);
     setErrors({});
 
-    await new Promise((res) => setTimeout(res, 400));
+    await new Promise((res) => setTimeout(res, 350));
 
     const users = await getUsers();
     const found = users.find(
@@ -52,13 +53,13 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
     );
 
     if (!found) {
-      triggerHapticNotification(false ? undefined : 2 as any); // Warning/Error
-      setErrors({ general: 'Username atau password tidak cocok.' });
+      triggerHapticNotification(Haptics.NotificationFeedbackType.Error);
+      setErrors({ general: 'Username atau password tidak sesuai.' });
       setIsSubmitting(false);
       return;
     }
 
-    triggerHapticNotification();
+    triggerHapticNotification(Haptics.NotificationFeedbackType.Success);
     await login(found.id, found.username);
     setIsSubmitting(false);
     navigation.replace('Home');
@@ -75,33 +76,30 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Header Section */}
           <View style={styles.header}>
-            <View style={styles.brandIconContainer}>
-              <Coffee size={28} color={palette.accent} strokeWidth={2} />
-            </View>
+            <Typography variant="overline" color="accent" style={styles.overline}>
+              BrewLog
+            </Typography>
             <Typography variant="display" color="primary" style={styles.title}>
               Masuk
             </Typography>
-            <Typography variant="callout" color="secondary" style={styles.subtitle}>
-              Buka kembali koleksi racikan dan catatan seduh kopi Anda.
+            <Typography variant="callout" color="secondary">
+              Lanjutkan catatan seduh dan koleksi resep kopimu.
             </Typography>
           </View>
 
-          {/* General Error Banner */}
-          {errors.general && (
+          {errors.general ? (
             <View style={styles.errorBanner}>
-              <Typography variant="caption" color="danger">
+              <Typography variant="subheadline" color="danger">
                 {errors.general}
               </Typography>
             </View>
-          )}
+          ) : null}
 
-          {/* Form */}
           <View style={styles.formSection}>
             <Input
               label="Username"
-              placeholder="Contoh: barista_harian"
+              placeholder="Masukkan username"
               value={username}
               onChangeText={(text) => {
                 setUsername(text);
@@ -110,7 +108,6 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
               autoCapitalize="none"
               autoCorrect={false}
               error={errors.username}
-              trailingIcon={<UserIcon size={18} color={palette.textTertiary} strokeWidth={1.75} />}
             />
 
             <Input
@@ -127,34 +124,29 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 hidePassword ? (
                   <EyeOff size={18} color={palette.textTertiary} strokeWidth={1.75} />
                 ) : (
-                  <Eye size={18} color={palette.accent} strokeWidth={1.75} />
+                  <Eye size={18} color={palette.textPrimary} strokeWidth={1.75} />
                 )
               }
               onTrailingIconPress={() => setHidePassword(!hidePassword)}
             />
 
             <View style={styles.submitContainer}>
-              <Button
-                variant="primary"
-                onPress={handleLogin}
-                loading={isSubmitting}
-              >
-                Masuk ke Akun
+              <Button variant="primary" onPress={handleLogin} loading={isSubmitting}>
+                Masuk
               </Button>
             </View>
           </View>
 
-          {/* Register Link Footer */}
           <View style={styles.footer}>
             <Typography variant="callout" color="secondary">
-              Belum memiliki akun?{' '}
+              Belum punya akun?{' '}
             </Typography>
             <TouchableOpacity
               onPress={() => navigation.navigate('Register')}
               hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
             >
               <Typography variant="calloutMedium" color="accent">
-                Daftar Sekarang
+                Daftar
               </Typography>
             </TouchableOpacity>
           </View>
@@ -181,28 +173,17 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: spacing.xxl,
   },
-  brandIconContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: palette.surface,
-    borderWidth: 1,
-    borderColor: palette.borderSubtle,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.lg,
+  overline: {
+    marginBottom: spacing.xs,
   },
   title: {
     marginBottom: spacing.xs,
   },
-  subtitle: {
-    lineHeight: 20,
-  },
   errorBanner: {
     backgroundColor: palette.statusDangerBg,
     borderRadius: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(179, 57, 53, 0.25)',
+    borderWidth: strokes.hairline,
+    borderColor: 'rgba(176, 58, 53, 0.25)',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     marginBottom: spacing.lg,
@@ -217,7 +198,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
   },
 });
 

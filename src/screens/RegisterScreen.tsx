@@ -9,9 +9,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Eye, EyeOff, User as UserIcon, Lock, CheckCircle2 } from 'lucide-react-native';
+import { Eye, EyeOff, CheckCircle2 } from 'lucide-react-native';
 import { RootStackParamList } from '../types/navigation';
-import { palette, spacing, layout } from '../theme/tokens';
+import { palette, spacing, layout, strokes } from '../theme/tokens';
 import { Typography, Input, Button, HeaderBar } from '../components/common';
 import { saveUser, getUsers } from '../storage';
 import { triggerHapticNotification } from '../utils/haptics';
@@ -37,21 +37,21 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
   const validate = (): boolean => {
     const newErrors: typeof errors = {};
     if (!username.trim()) {
-      newErrors.username = 'Pilih username untuk akun Anda';
+      newErrors.username = 'Username wajib diisi';
     } else if (username.trim().length < 3) {
-      newErrors.username = 'Username minimal 3 karakter';
+      newErrors.username = 'Minimal 3 karakter';
     }
 
     if (!password) {
-      newErrors.password = 'Password tidak boleh kosong';
+      newErrors.password = 'Password wajib diisi';
     } else if (password.length < 6) {
-      newErrors.password = 'Gunakan minimal 6 karakter';
+      newErrors.password = 'Minimal 6 karakter';
     }
 
     if (!confirmPassword) {
-      newErrors.confirmPassword = 'Ulangi password untuk konfirmasi';
+      newErrors.confirmPassword = 'Konfirmasi password wajib diisi';
     } else if (confirmPassword !== password) {
-      newErrors.confirmPassword = 'Konfirmasi password tidak cocok';
+      newErrors.confirmPassword = 'Password tidak cocok';
     }
 
     setErrors(newErrors);
@@ -66,7 +66,7 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
 
     const users = await getUsers();
     if (users.some((u) => u.username.toLowerCase() === username.trim().toLowerCase())) {
-      setErrors({ username: 'Username ini sudah digunakan barista lain.' });
+      setErrors({ username: 'Username sudah terdaftar' });
       setIsSubmitting(false);
       return;
     }
@@ -86,17 +86,16 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
       setIsSuccess(true);
       setTimeout(() => {
         navigation.navigate('Login');
-      }, 1200);
+      }, 1100);
     } else {
-      setErrors({ general: 'Gagal membuat akun. Silakan coba lagi.' });
+      setErrors({ general: 'Gagal menyimpan akun. Coba lagi.' });
     }
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <HeaderBar
-        title="Daftar Akun"
-        subtitle="Langkah 1 dari 1"
+        title="Buat Akun"
         onBack={() => navigation.goBack()}
         showDivider={false}
       />
@@ -110,45 +109,41 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Header Description */}
           <View style={styles.header}>
             <Typography variant="display" color="primary" style={styles.title}>
-              Buat Profil
+              Daftar
             </Typography>
-            <Typography variant="callout" color="secondary" style={styles.subtitle}>
-              Mulai koleksi catatan seduh, perbandingan rasio, dan resep kopi favorit Anda.
+            <Typography variant="callout" color="secondary">
+              Buat akun lokal untuk menyimpan resep dan catatan seduhmu.
             </Typography>
           </View>
 
-          {/* Success Banner */}
           {isSuccess ? (
             <View style={styles.successBanner}>
-              <CheckCircle2 size={24} color={palette.statusSuccess} strokeWidth={2} />
+              <CheckCircle2 size={20} color={palette.statusSuccess} strokeWidth={2} />
               <View style={styles.successTextContainer}>
                 <Typography variant="subheadlineMedium" color="success">
-                  Akun Berhasil Dibuat
+                  Akun berhasil dibuat
                 </Typography>
                 <Typography variant="caption" color="secondary">
-                  Mengarahkan Anda ke halaman masuk...
+                  Mengalihkan ke halaman masuk...
                 </Typography>
               </View>
             </View>
           ) : null}
 
-          {/* General Error Banner */}
           {errors.general ? (
             <View style={styles.errorBanner}>
-              <Typography variant="caption" color="danger">
+              <Typography variant="subheadline" color="danger">
                 {errors.general}
               </Typography>
             </View>
           ) : null}
 
-          {/* Inputs */}
           <View style={styles.formSection}>
             <Input
               label="Username"
-              placeholder="Pilih nama pengguna unik"
+              placeholder="Minimal 3 karakter"
               value={username}
               onChangeText={(text) => {
                 setUsername(text);
@@ -157,7 +152,6 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
               autoCapitalize="none"
               autoCorrect={false}
               error={errors.username}
-              trailingIcon={<UserIcon size={18} color={palette.textTertiary} strokeWidth={1.75} />}
             />
 
             <Input
@@ -174,7 +168,7 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
                 hidePassword ? (
                   <EyeOff size={18} color={palette.textTertiary} strokeWidth={1.75} />
                 ) : (
-                  <Eye size={18} color={palette.accent} strokeWidth={1.75} />
+                  <Eye size={18} color={palette.textPrimary} strokeWidth={1.75} />
                 )
               }
               onTrailingIconPress={() => setHidePassword(!hidePassword)}
@@ -182,7 +176,7 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
 
             <Input
               label="Konfirmasi Password"
-              placeholder="Ketik ulang password Anda"
+              placeholder="Ulangi password"
               value={confirmPassword}
               onChangeText={(text) => {
                 setConfirmPassword(text);
@@ -200,22 +194,21 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
                 loading={isSubmitting}
                 disabled={isSuccess}
               >
-                {isSuccess ? 'Berhasil Dibuat' : 'Selesaikan Pendaftaran'}
+                {isSuccess ? 'Berhasil' : 'Daftar'}
               </Button>
             </View>
           </View>
 
-          {/* Login Link Footer */}
           <View style={styles.footer}>
             <Typography variant="callout" color="secondary">
-              Sudah memiliki akun?{' '}
+              Sudah punya akun?{' '}
             </Typography>
             <TouchableOpacity
               onPress={() => navigation.navigate('Login')}
               hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
             >
               <Typography variant="calloutMedium" color="accent">
-                Masuk di sini
+                Masuk
               </Typography>
             </TouchableOpacity>
           </View>
@@ -238,34 +231,31 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxxl,
   },
   header: {
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
     marginBottom: spacing.xl,
   },
   title: {
     marginBottom: spacing.xs,
-  },
-  subtitle: {
-    lineHeight: 20,
   },
   successBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: palette.statusSuccessBg,
     borderRadius: 10,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(63, 107, 77, 0.3)',
+    borderWidth: strokes.hairline,
+    borderColor: 'rgba(58, 102, 71, 0.25)',
     padding: spacing.md,
     marginBottom: spacing.lg,
   },
   successTextContainer: {
-    marginLeft: spacing.md,
+    marginLeft: spacing.sm,
     flex: 1,
   },
   errorBanner: {
     backgroundColor: palette.statusDangerBg,
     borderRadius: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(179, 57, 53, 0.25)',
+    borderWidth: strokes.hairline,
+    borderColor: 'rgba(176, 58, 53, 0.25)',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     marginBottom: spacing.lg,
@@ -280,7 +270,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
   },
 });
 

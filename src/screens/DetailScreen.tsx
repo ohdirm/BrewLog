@@ -15,19 +15,12 @@ import {
   Check,
   Clock,
   Pencil,
-  Trash2,
-  Calendar,
   AlertTriangle,
-  FileText,
-  ListOrdered,
-  Layers,
 } from 'lucide-react-native';
 import { RootStackParamList } from '../types/navigation';
 import { palette, spacing, radii, strokes, layout } from '../theme/tokens';
 import {
   Typography,
-  Badge,
-  SurfaceCard,
   Button,
   HeaderBar,
   EmptyState,
@@ -51,12 +44,12 @@ const DetailScreen: React.FC<Props> = ({ route, navigation }) => {
   if (!recipe) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <HeaderBar title="Detail Resep" onBack={() => navigation.goBack()} />
+        <HeaderBar title="Resep" onBack={() => navigation.goBack()} />
         <EmptyState
-          icon={<AlertTriangle size={32} color={palette.statusDanger} strokeWidth={1.5} />}
-          title="Resep Tidak Ditemukan"
-          description="Resep ini mungkin sudah dihapus atau tidak tersedia."
-          actionLabel="Kembali ke Beranda"
+          icon={<AlertTriangle size={28} color={palette.statusDanger} strokeWidth={1.5} />}
+          title="Resep tidak ditemukan"
+          description="Resep ini mungkin sudah dihapus."
+          actionLabel="Kembali"
           onAction={() => navigation.goBack()}
         />
       </SafeAreaView>
@@ -90,7 +83,6 @@ const DetailScreen: React.FC<Props> = ({ route, navigation }) => {
     year: 'numeric',
   });
 
-  // Split steps by newline if multiline
   const stepItems = recipe.steps
     ? recipe.steps.split('\n').filter((s) => s.trim().length > 0)
     : [];
@@ -98,21 +90,34 @@ const DetailScreen: React.FC<Props> = ({ route, navigation }) => {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <HeaderBar
-        title="Detail Racikan"
+        title=""
         onBack={() => navigation.goBack()}
+        showDivider={false}
         rightAction={
-          <TouchableOpacity
-            onPress={handleToggleFavorite}
-            style={styles.favoriteHeaderBtn}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Star
-              size={22}
-              color={recipe.isFavorite ? palette.statusStar : palette.textSecondary}
-              fill={recipe.isFavorite ? palette.statusStar : 'transparent'}
-              strokeWidth={1.75}
-            />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              onPress={() => {
+                triggerHaptic();
+                navigation.navigate('Form', { recipe });
+              }}
+              style={styles.headerIconBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Pencil size={19} color={palette.textPrimary} strokeWidth={1.75} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleToggleFavorite}
+              style={styles.headerIconBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Star
+                size={20}
+                color={recipe.isFavorite ? palette.statusStar : palette.textSecondary}
+                fill={recipe.isFavorite ? palette.statusStar : 'transparent'}
+                strokeWidth={1.75}
+              />
+            </TouchableOpacity>
+          </View>
         }
       />
 
@@ -120,166 +125,122 @@ const DetailScreen: React.FC<Props> = ({ route, navigation }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero Card */}
-        <SurfaceCard style={styles.heroCard}>
-          <View style={styles.categoryRow}>
-            <Badge
-              label={recipe.category}
-              tone={
-                recipe.category === 'Kopi Panas'
-                  ? 'accent'
-                  : recipe.category === 'Kopi Dingin'
-                  ? 'warning'
-                  : 'neutral'
-              }
-            />
-            <View style={styles.dateContainer}>
-              <Calendar size={12} color={palette.textTertiary} strokeWidth={1.5} />
-              <Typography variant="caption" color="tertiary" tabular style={styles.dateText}>
-                {formattedDate}
-              </Typography>
-            </View>
-          </View>
+        {/* Editorial Title Block */}
+        <View style={styles.titleBlock}>
+          <Typography variant="overline" color="accent" tabular style={styles.metaOverline}>
+            {recipe.category} · {formattedDate}
+          </Typography>
 
           <Typography variant="display" color="primary" style={styles.recipeTitle}>
             {recipe.name}
           </Typography>
 
-          {/* Interactive Status Pill */}
-          <View style={styles.statusInteractiveRow}>
-            <TouchableOpacity
-              onPress={handleToggleTried}
-              activeOpacity={0.8}
+          <TouchableOpacity
+            onPress={handleToggleTried}
+            activeOpacity={0.7}
+            style={styles.statusRow}
+          >
+            {recipe.isTried ? (
+              <View style={styles.statusInline}>
+                <Check size={15} color={palette.statusSuccess} strokeWidth={2.25} />
+                <Typography variant="subheadlineMedium" color="success" style={styles.statusText}>
+                  Sudah pernah dicoba
+                </Typography>
+              </View>
+            ) : (
+              <View style={styles.statusInline}>
+                <Clock size={15} color={palette.textTertiary} strokeWidth={1.75} />
+                <Typography variant="subheadline" color="secondary" style={styles.statusText}>
+                  Belum dicoba — ketuk untuk tandai
+                </Typography>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.sectionDivider} />
+
+        {/* Ingredients Table */}
+        <View style={styles.section}>
+          <Typography variant="overline" color="secondary" style={styles.sectionLabel}>
+            Bahan-Bahan
+          </Typography>
+
+          {recipe.ingredients.map((item, index) => (
+            <View
+              key={item.id || index}
               style={[
-                styles.statusToggle,
-                recipe.isTried ? styles.statusToggleTried : styles.statusToggleUntried,
+                styles.ingredientRow,
+                index === recipe.ingredients.length - 1 && styles.ingredientRowLast,
               ]}
             >
-              {recipe.isTried ? (
-                <>
-                  <Check size={14} color={palette.statusSuccess} strokeWidth={2.5} />
-                  <Typography variant="caption" color="success" style={styles.statusToggleText}>
-                    Sudah Pernah Diseduh
-                  </Typography>
-                </>
-              ) : (
-                <>
-                  <Clock size={14} color={palette.textSecondary} strokeWidth={2} />
-                  <Typography variant="caption" color="secondary" style={styles.statusToggleText}>
-                    Belum Dicoba (Ketuk jika sudah)
-                  </Typography>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-        </SurfaceCard>
-
-        {/* Ingredients Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Layers size={18} color={palette.accent} strokeWidth={2} />
-            <Typography variant="h2" color="primary" style={styles.sectionTitle}>
-              Komposisi & Takaran
-            </Typography>
-          </View>
-
-          <SurfaceCard style={styles.ingredientsCard}>
-            {recipe.ingredients.map((item, index) => (
-              <View
-                key={item.id || index}
-                style={[
-                  styles.ingredientItem,
-                  index === recipe.ingredients.length - 1 && styles.ingredientItemLast,
-                ]}
-              >
-                <View style={styles.ingredientMeasureCol}>
-                  <Typography variant="bodyMedium" color="primary" tabular>
-                    {item.amount}
-                  </Typography>
-                  <Typography variant="caption" color="secondary" style={styles.unitText}>
-                    {item.unit}
-                  </Typography>
-                </View>
-
-                <View style={styles.ingredientNameCol}>
-                  <Typography variant="body" color="primary">
-                    {item.name}
-                  </Typography>
-                </View>
-              </View>
-            ))}
-          </SurfaceCard>
-        </View>
-
-        {/* Steps Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <ListOrdered size={18} color={palette.accent} strokeWidth={2} />
-            <Typography variant="h2" color="primary" style={styles.sectionTitle}>
-              Metode & Langkah Seduh
-            </Typography>
-          </View>
-
-          <SurfaceCard style={styles.stepsCard}>
-            {stepItems.length > 0 ? (
-              stepItems.map((step, index) => (
-                <View key={index} style={styles.stepRow}>
-                  <View style={styles.stepNumberBadge}>
-                    <Typography variant="caption" color="accent" tabular style={styles.stepNumberText}>
-                      {(index + 1).toString().padStart(2, '0')}
-                    </Typography>
-                  </View>
-                  <Typography variant="body" color="primary" style={styles.stepText}>
-                    {step}
-                  </Typography>
-                </View>
-              ))
-            ) : (
-              <Typography variant="callout" color="tertiary">
-                Belum ada instruksi seduh yang dicatat.
+              <Typography variant="bodyMedium" color="primary" tabular style={styles.measureText}>
+                {item.amount} {item.unit}
               </Typography>
-            )}
-          </SurfaceCard>
-        </View>
-
-        {/* Tasting Notes Section */}
-        {recipe.notes ? (
-          <View style={styles.section}>
-            <View style={styles.sectionHeaderRow}>
-              <FileText size={18} color={palette.accent} strokeWidth={2} />
-              <Typography variant="h2" color="primary" style={styles.sectionTitle}>
-                Catatan Barista
+              <Typography variant="body" color="primary" style={styles.ingredientName}>
+                {item.name}
               </Typography>
             </View>
+          ))}
+        </View>
 
-            <SurfaceCard subdued style={styles.notesCard}>
-              <Typography variant="callout" color="secondary" style={styles.notesContent}>
-                {recipe.notes}
+        <View style={styles.sectionDivider} />
+
+        {/* Brewing Steps */}
+        <View style={styles.section}>
+          <Typography variant="overline" color="secondary" style={styles.sectionLabel}>
+            Langkah Seduh
+          </Typography>
+
+          {stepItems.length > 0 ? (
+            stepItems.map((step, index) => (
+              <View key={index} style={styles.stepRow}>
+                <Typography variant="bodyMedium" color="accent" tabular style={styles.stepNum}>
+                  {index + 1}.
+                </Typography>
+                <Typography variant="body" color="primary" style={styles.stepText}>
+                  {step}
+                </Typography>
+              </View>
+            ))
+          ) : (
+            <Typography variant="callout" color="tertiary">
+              Belum ada langkah yang dicatat.
+            </Typography>
+          )}
+        </View>
+
+        {/* Barista Notes */}
+        {recipe.notes ? (
+          <>
+            <View style={styles.sectionDivider} />
+            <View style={styles.section}>
+              <Typography variant="overline" color="secondary" style={styles.sectionLabel}>
+                Catatan
               </Typography>
-            </SurfaceCard>
-          </View>
+              <View style={styles.notesBlock}>
+                <Typography variant="body" color="secondary" style={styles.notesText}>
+                  {recipe.notes}
+                </Typography>
+              </View>
+            </View>
+          </>
         ) : null}
 
-        {/* Actions Dock */}
-        <View style={styles.actionDock}>
-          <View style={styles.actionBtn}>
-            <Button
-              variant="secondary"
-              icon={<Pencil size={16} color={palette.textPrimary} strokeWidth={1.75} />}
-              onPress={() => navigation.navigate('Form', { recipe })}
-            >
-              Ubah Resep
-            </Button>
-          </View>
-          <View style={styles.actionBtn}>
-            <Button
-              variant="destructive"
-              icon={<Trash2 size={16} color={palette.statusDanger} strokeWidth={1.75} />}
-              onPress={() => setShowDeleteModal(true)}
-            >
-              Hapus
-            </Button>
-          </View>
+        {/* Quiet Destructive Action at bottom */}
+        <View style={styles.footerActions}>
+          <TouchableOpacity
+            onPress={() => {
+              triggerHaptic();
+              setShowDeleteModal(true);
+            }}
+            style={styles.deleteLink}
+            hitSlop={{ top: 10, bottom: 10, left: 20, right: 20 }}
+          >
+            <Typography variant="subheadlineMedium" color="danger">
+              Hapus Resep Ini
+            </Typography>
+          </TouchableOpacity>
         </View>
       </ScrollView>
 
@@ -292,16 +253,11 @@ const DetailScreen: React.FC<Props> = ({ route, navigation }) => {
       >
         <Pressable style={styles.modalOverlay} onPress={() => setShowDeleteModal(false)}>
           <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalIconCircle}>
-              <Trash2 size={24} color={palette.statusDanger} strokeWidth={2} />
-            </View>
-
-            <Typography variant="h2" color="primary" align="center" style={styles.modalTitle}>
-              Hapus Racikan?
+            <Typography variant="h2" color="primary" style={styles.modalTitle}>
+              Hapus resep?
             </Typography>
-
-            <Typography variant="callout" color="secondary" align="center" style={styles.modalSubtitle}>
-              Resep "{recipe.name}" akan dihapus permanen dari daftar koleksi Anda.
+            <Typography variant="callout" color="secondary" style={styles.modalSubtitle}>
+              "{recipe.name}" akan dihapus permanen dan tidak bisa dikembalikan.
             </Typography>
 
             <View style={styles.modalActions}>
@@ -316,7 +272,7 @@ const DetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   loading={isDeleting}
                   onPress={handleDelete}
                 >
-                  Ya, Hapus
+                  Hapus
                 </Button>
               </View>
             </View>
@@ -332,169 +288,116 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: palette.canvas,
   },
-  favoriteHeaderBtn: {
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerIconBtn: {
     padding: spacing.xs,
+    marginLeft: spacing.md,
   },
   scrollContent: {
     paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.xxxl,
+    paddingBottom: spacing.huge,
   },
-  heroCard: {
-    marginBottom: spacing.lg,
+  titleBlock: {
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xl,
   },
-  categoryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  dateContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  dateText: {
-    marginLeft: 4,
+  metaOverline: {
+    marginBottom: spacing.xs,
   },
   recipeTitle: {
-    marginVertical: spacing.xs,
-    letterSpacing: -0.6,
+    marginBottom: spacing.md,
   },
-  statusInteractiveRow: {
-    marginTop: spacing.md,
+  statusRow: {
+    alignSelf: 'flex-start',
   },
-  statusToggle: {
+  statusInline: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: spacing.md,
-    borderRadius: radii.round,
-    alignSelf: 'flex-start',
-    borderWidth: strokes.hairline,
   },
-  statusToggleTried: {
-    backgroundColor: palette.statusSuccessBg,
-    borderColor: 'rgba(63, 107, 77, 0.25)',
-  },
-  statusToggleUntried: {
-    backgroundColor: palette.surfaceSubdued,
-    borderColor: palette.borderSubtle,
-  },
-  statusToggleText: {
+  statusText: {
     marginLeft: 6,
-    fontWeight: '600',
+  },
+  sectionDivider: {
+    height: strokes.hairline,
+    backgroundColor: palette.divider,
+    marginBottom: spacing.xl,
   },
   section: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
-  sectionHeaderRow: {
+  sectionLabel: {
+    marginBottom: spacing.md,
+  },
+  ingredientRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  sectionTitle: {
-    marginLeft: spacing.xs,
-    letterSpacing: -0.3,
-  },
-  ingredientsCard: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.lg,
-  },
-  ingredientItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
+    alignItems: 'baseline',
+    paddingVertical: spacing.sm,
     borderBottomWidth: strokes.hairline,
     borderBottomColor: palette.divider,
   },
-  ingredientItemLast: {
+  ingredientRowLast: {
     borderBottomWidth: 0,
   },
-  ingredientMeasureCol: {
-    width: 90,
-    flexDirection: 'row',
-    alignItems: 'baseline',
+  measureText: {
+    width: 92,
   },
-  unitText: {
-    marginLeft: 3,
-  },
-  ingredientNameCol: {
+  ingredientName: {
     flex: 1,
-  },
-  stepsCard: {
-    padding: spacing.lg,
   },
   stepRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginBottom: spacing.md,
   },
-  stepNumberBadge: {
-    width: 26,
-    height: 26,
-    borderRadius: radii.round,
-    backgroundColor: palette.accentLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
-    marginTop: 2,
-  },
-  stepNumberText: {
-    fontWeight: '700',
+  stepNum: {
+    width: 24,
   },
   stepText: {
     flex: 1,
-    lineHeight: 22,
+    lineHeight: 23,
   },
-  notesCard: {
-    padding: spacing.lg,
-    borderLeftWidth: 3,
+  notesBlock: {
+    borderLeftWidth: 2,
     borderLeftColor: palette.accent,
+    paddingLeft: spacing.md,
   },
-  notesContent: {
-    lineHeight: 22,
-    fontStyle: 'italic',
+  notesText: {
+    lineHeight: 23,
   },
-  actionDock: {
-    flexDirection: 'row',
-    marginTop: spacing.md,
-    marginBottom: spacing.xl,
+  footerActions: {
+    marginTop: spacing.lg,
+    paddingTop: spacing.lg,
+    borderTopWidth: strokes.hairline,
+    borderTopColor: palette.divider,
+    alignItems: 'center',
   },
-  actionBtn: {
-    flex: 1,
-    marginHorizontal: 4,
+  deleteLink: {
+    paddingVertical: spacing.sm,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(26, 20, 18, 0.45)',
+    backgroundColor: 'rgba(26, 23, 21, 0.45)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: layout.screenPadding,
   },
   modalCard: {
     width: '100%',
-    maxWidth: 340,
+    maxWidth: 330,
     backgroundColor: palette.surface,
-    borderRadius: radii.xl,
+    borderRadius: radii.lg,
     padding: spacing.xl,
-    alignItems: 'center',
     borderWidth: strokes.hairline,
     borderColor: palette.borderSubtle,
-  },
-  modalIconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: radii.round,
-    backgroundColor: palette.statusDangerBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
   },
   modalTitle: {
     marginBottom: spacing.xs,
   },
   modalSubtitle: {
-    lineHeight: 19,
+    lineHeight: 20,
     marginBottom: spacing.xl,
   },
   modalActions: {

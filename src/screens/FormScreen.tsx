@@ -11,14 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import {
-  Layers,
-  ListOrdered,
-  FileText,
-  Plus,
-  Trash2,
-  Check,
-} from 'lucide-react-native';
+import { Plus, X } from 'lucide-react-native';
 import { RootStackParamList } from '../types/navigation';
 import { Ingredient, RecipeCategory } from '../types';
 import { palette, spacing, radii, strokes, layout } from '../theme/tokens';
@@ -27,7 +20,6 @@ import {
   Input,
   Button,
   HeaderBar,
-  SurfaceCard,
 } from '../components/common';
 import { useRecipes } from '../context/RecipeContext';
 import { triggerHaptic, triggerHapticNotification } from '../utils/haptics';
@@ -49,7 +41,6 @@ const FormScreen: React.FC<Props> = ({ route, navigation }) => {
   const [steps, setSteps] = useState(recipe?.steps || '');
   const [notes, setNotes] = useState(recipe?.notes || '');
 
-  // New Ingredient input fields
   const [ingName, setIngName] = useState('');
   const [ingAmount, setIngAmount] = useState('');
   const [ingUnit, setIngUnit] = useState('g');
@@ -59,16 +50,16 @@ const FormScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const validate = (): boolean => {
     const newErrors: typeof errors = {};
-    if (!name.trim()) newErrors.name = 'Nama racikan wajib diisi';
+    if (!name.trim()) newErrors.name = 'Nama resep wajib diisi';
     if (ingredients.length === 0)
-      newErrors.ingredients = 'Tambahkan minimal 1 bahan racikan';
+      newErrors.ingredients = 'Tambahkan minimal 1 bahan';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleAddIngredient = () => {
     if (!ingName.trim() || !ingAmount.trim()) {
-      Alert.alert('Perhatian', 'Isi nama bahan dan takarannya terlebih dahulu.');
+      Alert.alert('Perhatian', 'Isi nama bahan dan takaran terlebih dahulu.');
       return;
     }
 
@@ -115,7 +106,7 @@ const FormScreen: React.FC<Props> = ({ route, navigation }) => {
         if (success) {
           navigation.goBack();
         } else {
-          Alert.alert('Error', 'Gagal memperbarui resep. Coba lagi.');
+          Alert.alert('Error', 'Gagal memperbarui resep.');
         }
       } else {
         const success = await addRecipe({
@@ -131,7 +122,7 @@ const FormScreen: React.FC<Props> = ({ route, navigation }) => {
         if (success) {
           navigation.goBack();
         } else {
-          Alert.alert('Error', 'Gagal menyimpan resep. Coba lagi.');
+          Alert.alert('Error', 'Gagal menyimpan resep.');
         }
       }
     } catch {
@@ -143,8 +134,7 @@ const FormScreen: React.FC<Props> = ({ route, navigation }) => {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <HeaderBar
-        title={recipe ? 'Perbarui Resep' : 'Racik Resep Baru'}
-        subtitle={recipe ? 'Ubah takaran & catatan' : 'Katalog seduhan personal'}
+        title={recipe ? 'Edit Resep' : 'Resep Baru'}
         onBack={() => navigation.goBack()}
       />
 
@@ -157,10 +147,10 @@ const FormScreen: React.FC<Props> = ({ route, navigation }) => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Category Picker Segment */}
+          {/* Category Picker */}
           <View style={styles.section}>
-            <Typography variant="subheadlineMedium" color="primary" style={styles.sectionLabel}>
-              Kategori Minuman
+            <Typography variant="subheadlineMedium" color="primary" style={styles.label}>
+              Kategori
             </Typography>
             <View style={styles.segmentContainer}>
               {CATEGORIES.map((cat) => {
@@ -193,59 +183,49 @@ const FormScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
 
           {/* Recipe Name */}
-          <View style={styles.section}>
-            <Input
-              label="Nama Racikan *"
-              placeholder="Contoh: Japanese Iced Filter V60"
-              value={name}
-              onChangeText={(text) => {
-                setName(text);
-                if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
-              }}
-              error={errors.name}
-            />
-          </View>
+          <Input
+            label="Nama Resep"
+            placeholder="Contoh: V60 Ethiopia Guji"
+            value={name}
+            onChangeText={(text) => {
+              setName(text);
+              if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
+            }}
+            error={errors.name}
+          />
 
-          {/* Ingredients Section */}
+          {/* Ingredients */}
           <View style={styles.section}>
-            <View style={styles.sectionHeaderRow}>
-              <Layers size={16} color={palette.accent} strokeWidth={2} />
-              <Typography variant="subheadlineMedium" color="primary" style={styles.sectionLabel}>
-                Komposisi & Takaran *
-              </Typography>
-            </View>
+            <Typography variant="subheadlineMedium" color="primary" style={styles.label}>
+              Bahan-Bahan
+            </Typography>
 
-            {/* List of current ingredients */}
-            {ingredients.length > 0 ? (
-              <SurfaceCard style={styles.ingredientsListCard}>
+            {ingredients.length > 0 && (
+              <View style={styles.ingredientsList}>
                 {ingredients.map((item, index) => (
                   <View
                     key={item.id}
                     style={[
-                      styles.ingredientItemRow,
-                      index === ingredients.length - 1 && styles.ingredientItemRowLast,
+                      styles.ingredientRow,
+                      index === ingredients.length - 1 && styles.ingredientRowLast,
                     ]}
                   >
-                    <View style={styles.ingredientInfo}>
-                      <Typography variant="bodyMedium" color="primary" tabular>
-                        {item.amount} {item.unit}
-                      </Typography>
-                      <Typography variant="body" color="secondary" style={styles.ingredientNameText}>
-                        {item.name}
-                      </Typography>
-                    </View>
-
+                    <Typography variant="bodyMedium" color="primary" tabular style={styles.ingMeasure}>
+                      {item.amount} {item.unit}
+                    </Typography>
+                    <Typography variant="body" color="secondary" style={styles.ingName}>
+                      {item.name}
+                    </Typography>
                     <TouchableOpacity
                       onPress={() => handleRemoveIngredient(item.id)}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      style={styles.removeIngBtn}
                     >
-                      <Trash2 size={16} color={palette.statusDanger} strokeWidth={1.75} />
+                      <X size={16} color={palette.textTertiary} strokeWidth={2} />
                     </TouchableOpacity>
                   </View>
                 ))}
-              </SurfaceCard>
-            ) : null}
+              </View>
+            )}
 
             {errors.ingredients && (
               <Typography variant="caption" color="danger" style={styles.errorText}>
@@ -253,99 +233,75 @@ const FormScreen: React.FC<Props> = ({ route, navigation }) => {
               </Typography>
             )}
 
-            {/* Input to add new ingredient */}
-            <SurfaceCard subdued style={styles.addIngredientCard}>
-              <Typography variant="caption" color="secondary" style={styles.addCardTitle}>
-                Tambah Bahan Baru
-              </Typography>
-
-              <View style={styles.addInputsGrid}>
-                <View style={styles.inputFlexName}>
-                  <Input
-                    placeholder="Nama (misal: Biji Gayo)"
-                    value={ingName}
-                    onChangeText={setIngName}
-                    containerStyle={styles.compactInputContainer}
-                  />
-                </View>
-                <View style={styles.inputFlexAmount}>
-                  <Input
-                    placeholder="Takaran"
-                    value={ingAmount}
-                    onChangeText={setIngAmount}
-                    keyboardType="numeric"
-                    containerStyle={styles.compactInputContainer}
-                  />
-                </View>
-                <View style={styles.inputFlexUnit}>
-                  <Input
-                    placeholder="g / ml"
-                    value={ingUnit}
-                    onChangeText={setIngUnit}
-                    containerStyle={styles.compactInputContainer}
-                  />
-                </View>
+            <View style={styles.addRow}>
+              <View style={styles.inputFlexName}>
+                <Input
+                  placeholder="Nama bahan"
+                  value={ingName}
+                  onChangeText={setIngName}
+                  containerStyle={styles.compactInput}
+                />
               </View>
+              <View style={styles.inputFlexAmount}>
+                <Input
+                  placeholder="Jml"
+                  value={ingAmount}
+                  onChangeText={setIngAmount}
+                  keyboardType="numeric"
+                  containerStyle={styles.compactInput}
+                />
+              </View>
+              <View style={styles.inputFlexUnit}>
+                <Input
+                  placeholder="g"
+                  value={ingUnit}
+                  onChangeText={setIngUnit}
+                  containerStyle={styles.compactInput}
+                />
+              </View>
+            </View>
 
-              <Button
-                variant="secondary"
-                size="compact"
-                icon={<Plus size={16} color={palette.textPrimary} strokeWidth={2} />}
-                onPress={handleAddIngredient}
-                style={styles.addIngSubmitBtn}
-              >
-                Tambahkan Bahan
-              </Button>
-            </SurfaceCard>
+            <Button
+              variant="secondary"
+              size="compact"
+              icon={<Plus size={15} color={palette.textPrimary} strokeWidth={2} />}
+              onPress={handleAddIngredient}
+            >
+              Tambah Bahan
+            </Button>
           </View>
 
           {/* Steps */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeaderRow}>
-              <ListOrdered size={16} color={palette.accent} strokeWidth={2} />
-              <Typography variant="subheadlineMedium" color="primary" style={styles.sectionLabel}>
-                Langkah Seduh
-              </Typography>
-            </View>
-            <Input
-              placeholder={'1. Giling 15g biji kopi (medium)\n2. Basahi filter paper\n3. Tuang 45g blooming 30 detik\n4. Tuang sisa air hingga 225g'}
-              value={steps}
-              onChangeText={setSteps}
-              multiline
-              numberOfLines={4}
-              style={styles.multilineInput}
-              helper="Tip: Pisahkan tiap tahapan dengan baris baru."
-            />
-          </View>
+          <Input
+            label="Langkah Seduh"
+            placeholder={'1. Giling 15g biji kopi\n2. Tuang 45ml blooming 30 detik\n3. Tuang bertahap hingga 225ml'}
+            value={steps}
+            onChangeText={setSteps}
+            multiline
+            numberOfLines={4}
+            style={styles.multilineInput}
+            helper="Pisahkan tiap langkah dengan baris baru."
+          />
 
-          {/* Barista Notes */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeaderRow}>
-              <FileText size={16} color={palette.accent} strokeWidth={2} />
-              <Typography variant="subheadlineMedium" color="primary" style={styles.sectionLabel}>
-                Catatan Rasa & Brewing Notes (Opsional)
-              </Typography>
-            </View>
-            <Input
-              placeholder="Contoh: Note rasa floral jasmine dengan aftertaste brown sugar bersih. Waktu seduh total 2 menit 15 detik."
-              value={notes}
-              onChangeText={setNotes}
-              multiline
-              numberOfLines={3}
-              style={styles.multilineInput}
-            />
-          </View>
+          {/* Notes */}
+          <Input
+            label="Catatan (Opsional)"
+            placeholder="Catatan rasa, ukuran gilingan, atau suhu air..."
+            value={notes}
+            onChangeText={setNotes}
+            multiline
+            numberOfLines={3}
+            style={styles.multilineInput}
+          />
 
-          {/* Submit Action */}
           <View style={styles.submitSection}>
             <Button
               variant="primary"
               size="default"
               loading={isSubmitting}
               onPress={handleSubmit}
-              icon={<Check size={18} color={palette.textInverse} strokeWidth={2.5} />}
             >
-              {recipe ? 'Simpan Pembaruan' : 'Simpan ke Katalog Resep'}
+              {recipe ? 'Simpan Perubahan' : 'Simpan Resep'}
             </Button>
           </View>
         </ScrollView>
@@ -364,19 +320,13 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: layout.screenPadding,
-    paddingTop: spacing.md,
+    paddingTop: spacing.lg,
     paddingBottom: spacing.huge,
   },
   section: {
     marginBottom: spacing.lg,
   },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  sectionLabel: {
-    marginLeft: 4,
+  label: {
     marginBottom: spacing.xs,
   },
   segmentContainer: {
@@ -394,11 +344,6 @@ const styles = StyleSheet.create({
   },
   segmentButtonActive: {
     backgroundColor: palette.surface,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
   },
   segmentText: {
     color: palette.textSecondary,
@@ -406,75 +351,61 @@ const styles = StyleSheet.create({
   },
   segmentTextActive: {
     color: palette.textPrimary,
-    fontWeight: '700',
+    fontWeight: '600',
   },
-  ingredientsListCard: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
+  ingredientsList: {
     marginBottom: spacing.md,
+    borderTopWidth: strokes.hairline,
+    borderTopColor: palette.divider,
+    borderBottomWidth: strokes.hairline,
+    borderBottomColor: palette.divider,
   },
-  ingredientItemRow: {
+  ingredientRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingVertical: spacing.sm,
     borderBottomWidth: strokes.hairline,
     borderBottomColor: palette.divider,
   },
-  ingredientItemRowLast: {
+  ingredientRowLast: {
     borderBottomWidth: 0,
   },
-  ingredientInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
+  ingMeasure: {
+    width: 82,
   },
-  ingredientNameText: {
-    marginLeft: spacing.sm,
+  ingName: {
     flex: 1,
-  },
-  removeIngBtn: {
-    padding: spacing.xs,
-    marginLeft: spacing.sm,
+    marginRight: spacing.sm,
   },
   errorText: {
     marginBottom: spacing.sm,
   },
-  addIngredientCard: {
-    padding: spacing.md,
-  },
-  addCardTitle: {
-    marginBottom: spacing.sm,
-    fontWeight: '600',
-  },
-  addInputsGrid: {
+  addRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+    marginBottom: spacing.xs,
   },
   inputFlexName: {
-    flex: 2,
+    flex: 2.1,
     marginRight: 6,
   },
   inputFlexAmount: {
-    flex: 1.1,
+    flex: 1,
     marginRight: 6,
   },
   inputFlexUnit: {
-    flex: 0.9,
+    flex: 0.85,
   },
-  compactInputContainer: {
+  compactInput: {
     marginBottom: spacing.xs,
   },
-  addIngSubmitBtn: {
-    marginTop: spacing.xs,
-  },
   multilineInput: {
-    minHeight: 90,
+    minHeight: 88,
     textAlignVertical: 'top',
     paddingTop: spacing.sm,
   },
   submitSection: {
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
     marginBottom: spacing.xl,
   },
 });

@@ -5,4 +5,5 @@ export * from './Badge';
 export * from './SurfaceCard';
 export * from './EmptyState';
 export * from './HeaderBar';
+export * from './ErrorBoundary';
 

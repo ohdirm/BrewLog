@@ -14,7 +14,7 @@ import { RootStackParamList } from '../types/navigation';
 import { palette, spacing, layout, strokes } from '../theme/tokens';
 import { Typography, Input, Button } from '../components/common';
 import { useAuth } from '../context/AuthContext';
-import { getUsers } from '../storage';
+import { getUsers, verifyPassword } from '../storage';
 import { triggerHapticNotification } from '../utils/haptics';
 import * as Haptics from 'expo-haptics';
 
@@ -48,11 +48,12 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
     await new Promise((res) => setTimeout(res, 350));
 
     const users = await getUsers();
-    const found = users.find(
-      (u) => u.username.toLowerCase() === username.trim().toLowerCase() && u.password === password
+    const candidate = users.find(
+      (u) => u.username.toLowerCase() === username.trim().toLowerCase()
     );
+    const isPasswordValid = candidate ? await verifyPassword(password, candidate.password) : false;
 
-    if (!found) {
+    if (!candidate || !isPasswordValid) {
       triggerHapticNotification(Haptics.NotificationFeedbackType.Error);
       setErrors({ general: 'Username atau password tidak sesuai.' });
       setIsSubmitting(false);
@@ -60,7 +61,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
     }
 
     triggerHapticNotification(Haptics.NotificationFeedbackType.Success);
-    await login(found.id, found.username);
+    await login(candidate.id, candidate.username);
     setIsSubmitting(false);
     navigation.replace('Home');
   };

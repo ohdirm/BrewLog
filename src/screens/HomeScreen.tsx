@@ -7,6 +7,9 @@ import {
   Modal,
   TextInput,
   Pressable,
+  ScrollView,
+  Image,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -15,16 +18,18 @@ import {
   Plus,
   Search,
   X,
-  LogOut,
+  User as UserIcon,
   Star,
   Check,
+  ArrowUpDown,
 } from 'lucide-react-native';
 import { RootStackParamList } from '../types/navigation';
 import { Recipe, RecipeCategory } from '../types';
-import { palette, spacing, radii, strokes, layout } from '../theme/tokens';
+import { palette as staticPalette, spacing, radii, strokes, layout } from '../theme/tokens';
 import { Typography, Button, EmptyState } from '../components/common';
 import { useAuth } from '../context/AuthContext';
 import { useRecipes } from '../context/RecipeContext';
+import { useTheme } from '../context/ThemeContext';
 import { triggerHaptic } from '../utils/haptics';
 
 type Props = {
@@ -38,22 +43,62 @@ const CATEGORIES: (RecipeCategory | 'Semua')[] = [
   'Non-Kopi',
 ];
 
+type StatusFilter = 'Semua' | 'Favorit' | 'Belum Dicoba' | 'Sudah Dicoba';
+const STATUS_FILTERS: StatusFilter[] = ['Semua', 'Favorit', 'Belum Dicoba', 'Sudah Dicoba'];
+type SortOrder = 'newest' | 'az';
+
 const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const { username, logout } = useAuth();
-  const { recipes, toggleTried, toggleFavorite } = useRecipes();
+  const { palette } = useTheme();
+  const {
+    recipes,
+    toggleTried,
+    toggleFavorite,
+    lastDeletedRecipe,
+    undoDelete,
+    dismissUndo,
+    refreshRecipes,
+  } = useRecipes();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<RecipeCategory | 'Semua'>('Semua');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('Semua');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
+  const [refreshing, setRefreshing] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await refreshRecipes();
+    setRefreshing(false);
+  };
+
   const filteredRecipes = useMemo(() => {
-    return recipes.filter((recipe) => {
-      const matchesSearch = recipe.name.toLowerCase().includes(searchQuery.toLowerCase().trim());
+    const query = searchQuery.toLowerCase().trim();
+    const result = recipes.filter((recipe) => {
+      const matchesSearch =
+        !query ||
+        recipe.name.toLowerCase().includes(query) ||
+        recipe.ingredients.some((ing) => ing.name.toLowerCase().includes(query)) ||
+        (recipe.tags && recipe.tags.some((t) => t.toLowerCase().includes(query)));
       const matchesCategory =
         selectedCategory === 'Semua' || recipe.category === selectedCategory;
-      return matchesSearch && matchesCategory;
+      const matchesStatus =
+        statusFilter === 'Semua' ||
+        (statusFilter === 'Favorit' && recipe.isFavorite) ||
+        (statusFilter === 'Belum Dicoba' && !recipe.isTried) ||
+        (statusFilter === 'Sudah Dicoba' && recipe.isTried);
+
+      return matchesSearch && matchesCategory && matchesStatus;
     });
-  }, [recipes, searchQuery, selectedCategory]);
+
+    return [...result].sort((a, b) => {
+      if (sortOrder === 'az') {
+        return a.name.localeCompare(b.name, 'id');
+      }
+      return b.createdAt - a.createdAt;
+    });
+  }, [recipes, searchQuery, selectedCategory, statusFilter, sortOrder]);
 
   const handleLogout = async () => {
     setShowLogoutModal(false);
@@ -90,70 +135,83 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           pressed && styles.rowPressed,
         ]}
       >
-        {/* Title & Favorite */}
-        <View style={styles.rowHeader}>
-          <Typography variant="h3" color="primary" numberOfLines={1} style={styles.recipeTitle}>
-            {item.name}
-          </Typography>
+        <View style={styles.rowContentWrapper}>
+          {item.imageUri ? (
+            <Image source={{ uri: item.imageUri }} style={styles.rowThumb} />
+          ) : null}
 
-          <TouchableOpacity
-            onPress={() => handleToggleFavorite(item.id)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Star
-              size={18}
-              color={item.isFavorite ? palette.statusStar : palette.textTertiary}
-              fill={item.isFavorite ? palette.statusStar : 'transparent'}
-              strokeWidth={1.75}
-            />
-          </TouchableOpacity>
-        </View>
+          <View style={styles.rowMain}>
+            {/* Title & Favorite */}
+            <View style={styles.rowHeader}>
+              <Typography variant="h3" color="primary" numberOfLines={1} style={styles.recipeTitle}>
+                {item.name}
+              </Typography>
 
-        {/* Quiet inline metadata */}
-        <View style={styles.metaRow}>
-          <Typography variant="subheadline" color="secondary" tabular>
-            {item.category} · {item.ingredients.length} bahan
-          </Typography>
+              <TouchableOpacity
+                onPress={() => handleToggleFavorite(item.id)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Star
+                  size={18}
+                  color={item.isFavorite ? palette.statusStar : palette.textTertiary}
+                  fill={item.isFavorite ? palette.statusStar : 'transparent'}
+                  strokeWidth={1.75}
+                />
+              </TouchableOpacity>
+            </View>
 
-          <TouchableOpacity
-            onPress={() => handleToggleTried(item.id)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            style={styles.statusButton}
-          >
-            {item.isTried ? (
-              <View style={styles.statusInline}>
-                <Check size={13} color={palette.statusSuccess} strokeWidth={2.25} />
-                <Typography variant="caption" color="success" style={styles.statusLabel}>
-                  Sudah dicoba
-                </Typography>
-              </View>
-            ) : (
-              <Typography variant="caption" color="tertiary">
-                Belum dicoba
+            {/* Quiet inline metadata */}
+            <View style={styles.metaRow}>
+              <Typography variant="subheadline" color="secondary" tabular>
+                {item.category} · {item.ingredients.length} bahan
+                {item.rating ? ` · ★ ${item.rating}` : ''}
+                {item.tags && item.tags.length > 0 ? ` · #${item.tags[0]}` : ''}
+              </Typography>
+
+              <TouchableOpacity
+                onPress={() => handleToggleTried(item.id)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={styles.statusButton}
+              >
+                {item.isTried ? (
+                  <View style={styles.statusInline}>
+                    <Check size={13} color={palette.statusSuccess} strokeWidth={2.25} />
+                    <Typography variant="caption" color="success" style={styles.statusLabel}>
+                      Sudah dicoba
+                    </Typography>
+                  </View>
+                ) : (
+                  <Typography variant="caption" color="tertiary">
+                    Belum dicoba
+                  </Typography>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Ingredient preview */}
+            {item.ingredients.length > 0 && (
+              <Typography
+                variant="subheadline"
+                color="tertiary"
+                tabular
+                numberOfLines={1}
+                style={styles.ingredientPreview}
+              >
+                {ingredientSummary}
+                {item.ingredients.length > 3 ? ', ...' : ''}
               </Typography>
             )}
-          </TouchableOpacity>
+          </View>
         </View>
-
-        {/* Ingredient preview */}
-        {item.ingredients.length > 0 && (
-          <Typography
-            variant="subheadline"
-            color="tertiary"
-            tabular
-            numberOfLines={1}
-            style={styles.ingredientPreview}
-          >
-            {ingredientSummary}
-            {item.ingredients.length > 3 ? ', ...' : ''}
-          </Typography>
-        )}
       </Pressable>
     );
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: palette.canvas }]}
+      edges={['top', 'left', 'right']}
+    >
       {/* Editorial Header */}
       <View style={styles.topBar}>
         <View>
@@ -168,25 +226,25 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         <TouchableOpacity
           onPress={() => {
             triggerHaptic();
-            setShowLogoutModal(true);
+            navigation.navigate('Profile');
           }}
           style={styles.logoutButton}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <LogOut size={19} color={palette.textSecondary} strokeWidth={1.75} />
+          <UserIcon size={20} color={palette.textSecondary} strokeWidth={1.75} />
         </TouchableOpacity>
       </View>
 
       {/* Quiet Search Input */}
       <View style={styles.searchSection}>
-        <View style={styles.searchContainer}>
+        <View style={[styles.searchContainer, { backgroundColor: palette.surfaceSubdued }]}>
           <Search size={16} color={palette.textTertiary} strokeWidth={1.75} />
           <TextInput
-            placeholder="Cari resep atau bahan..."
+            placeholder="Cari resep, bahan, atau tag..."
             placeholderTextColor={palette.textTertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: palette.textPrimary }]}
             autoCorrect={false}
           />
           {searchQuery.length > 0 && (
@@ -230,6 +288,50 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         />
       </View>
 
+      {/* Status Filter & Sort Bar */}
+      <View style={styles.filterSortBar}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.statusChipsList}
+        >
+          {STATUS_FILTERS.map((status) => {
+            const isSelected = statusFilter === status;
+            return (
+              <TouchableOpacity
+                key={status}
+                onPress={() => {
+                  triggerHaptic();
+                  setStatusFilter(status);
+                }}
+                style={[styles.statusChip, isSelected && styles.statusChipActive]}
+              >
+                <Typography
+                  variant="caption"
+                  style={[styles.statusChipText, isSelected && styles.statusChipTextActive]}
+                >
+                  {status}
+                </Typography>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        <TouchableOpacity
+          onPress={() => {
+            triggerHaptic();
+            setSortOrder((prev) => (prev === 'newest' ? 'az' : 'newest'));
+          }}
+          style={styles.sortButton}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+        >
+          <ArrowUpDown size={13} color={palette.textSecondary} strokeWidth={1.75} />
+          <Typography variant="caption" color="secondary" style={styles.sortText}>
+            {sortOrder === 'newest' ? 'Terbaru' : 'A–Z'}
+          </Typography>
+        </TouchableOpacity>
+      </View>
+
       {/* Recipe List */}
       <FlatList
         data={filteredRecipes}
@@ -237,6 +339,14 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         renderItem={renderRecipeItem}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={palette.accent}
+            colors={[palette.accent]}
+          />
+        }
         ListEmptyComponent={
           <EmptyState
             icon={<Coffee size={28} color={palette.textTertiary} strokeWidth={1.5} />}
@@ -267,6 +377,38 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
       >
         <Plus size={24} color={palette.textInverse} strokeWidth={2} />
       </TouchableOpacity>
+
+      {/* Undo Delete Snackbar */}
+      {lastDeletedRecipe ? (
+        <View style={styles.snackbar}>
+          <Typography
+            variant="subheadline"
+            color="inverse"
+            numberOfLines={1}
+            style={styles.snackbarText}
+          >
+            "{lastDeletedRecipe.name}" dihapus
+          </Typography>
+          <TouchableOpacity
+            onPress={() => {
+              triggerHaptic();
+              undoDelete();
+            }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Typography variant="subheadlineMedium" color="accent">
+              Urungkan
+            </Typography>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={dismissUndo}
+            style={styles.snackbarClose}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <X size={15} color={palette.textTertiary} strokeWidth={2} />
+          </TouchableOpacity>
+        </View>
+      ) : null}
 
       {/* Logout Confirmation Modal */}
       <Modal
@@ -305,6 +447,8 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
     </SafeAreaView>
   );
 };
+
+const palette = staticPalette;
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -365,12 +509,62 @@ const styles = StyleSheet.create({
     color: palette.textPrimary,
     fontWeight: '600',
   },
+  filterSortBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingLeft: layout.screenPadding,
+    paddingRight: layout.screenPadding,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
+  },
+  statusChipsList: {
+    paddingRight: spacing.sm,
+  },
+  statusChip: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 5,
+    borderRadius: radii.round,
+    backgroundColor: palette.surfaceSubdued,
+    marginRight: spacing.xs,
+  },
+  statusChipActive: {
+    backgroundColor: palette.ink,
+  },
+  statusChipText: {
+    color: palette.textSecondary,
+  },
+  statusChipTextActive: {
+    color: palette.textInverse,
+  },
+  sortButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: spacing.sm,
+  },
+  sortText: {
+    marginLeft: 4,
+  },
   listContent: {
     paddingHorizontal: layout.screenPadding,
     paddingBottom: 96,
   },
   row: {
     paddingVertical: spacing.lg,
+  },
+  rowContentWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rowThumb: {
+    width: 54,
+    height: 54,
+    borderRadius: radii.sm,
+    backgroundColor: palette.surfaceSubdued,
+    marginRight: spacing.md,
+  },
+  rowMain: {
+    flex: 1,
   },
   rowDivider: {
     borderBottomWidth: strokes.hairline,
@@ -423,6 +617,30 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.16,
     shadowRadius: 6,
+  },
+  snackbar: {
+    position: 'absolute',
+    bottom: spacing.xxl,
+    left: layout.screenPadding,
+    right: layout.screenPadding + 68,
+    backgroundColor: palette.ink,
+    borderRadius: radii.md,
+    paddingVertical: 12,
+    paddingHorizontal: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+  },
+  snackbarText: {
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  snackbarClose: {
+    marginLeft: spacing.sm,
   },
   modalOverlay: {
     flex: 1,

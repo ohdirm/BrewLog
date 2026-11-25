@@ -5,6 +5,7 @@ export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
   Home: undefined;
-  Form: { recipe?: Recipe };
+  Form: { recipe?: Recipe; isDuplicate?: boolean };
   Detail: { recipeId: string };
+  Profile: undefined;
 };

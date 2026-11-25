@@ -1,6 +1,7 @@
 import React from 'react';
-import { Text, TextProps, StyleSheet, StyleProp, TextStyle } from 'react-native';
-import { typography, palette } from '../../theme/tokens';
+import { Text, TextProps, StyleProp, TextStyle } from 'react-native';
+import { typography } from '../../theme/tokens';
+import { useTheme } from '../../context/ThemeContext';
 
 export type TypographyVariant =
   | 'display'
@@ -35,17 +36,6 @@ interface Props extends TextProps {
   children: React.ReactNode;
 }
 
-const colorMap: Record<TypographyColor, string> = {
-  primary: palette.textPrimary,
-  secondary: palette.textSecondary,
-  tertiary: palette.textTertiary,
-  inverse: palette.textInverse,
-  accent: palette.accent,
-  success: palette.statusSuccess,
-  danger: palette.statusDanger,
-  warning: palette.statusWarning,
-};
-
 export const Typography: React.FC<Props> = ({
   variant = 'body',
   color = 'primary',
@@ -55,7 +45,18 @@ export const Typography: React.FC<Props> = ({
   children,
   ...rest
 }) => {
+  const { palette } = useTheme();
   const baseStyle = typography[variant];
+  const colorMap: Record<TypographyColor, string> = {
+    primary: palette.textPrimary,
+    secondary: palette.textSecondary,
+    tertiary: palette.textTertiary,
+    inverse: palette.textInverse,
+    accent: palette.accent,
+    success: palette.statusSuccess,
+    danger: palette.statusDanger,
+    warning: palette.statusWarning,
+  };
   const textColor = colorMap[color];
 
   return (

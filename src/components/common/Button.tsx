@@ -8,7 +8,8 @@ import {
   TextStyle,
   View,
 } from 'react-native';
-import { palette, radii, layout, typography } from '../../theme/tokens';
+import { palette, radii, layout } from '../../theme/tokens';
+import { useTheme } from '../../context/ThemeContext';
 import { triggerHaptic } from '../../utils/haptics';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'destructive' | 'ghost';
@@ -42,6 +43,7 @@ export const Button: React.FC<ButtonProps> = ({
   textStyle,
 }) => {
   const scale = useRef(new Animated.Value(1)).current;
+  const { palette: themePalette } = useTheme();
 
   const handlePressIn = () => {
     if (disabled || loading) return;
@@ -80,9 +82,17 @@ export const Button: React.FC<ButtonProps> = ({
           size === 'default' && styles.sizeDefault,
           size === 'compact' && styles.sizeCompact,
           size === 'sm' && styles.sizeSm,
-          isPrimary && styles.primary,
-          isSecondary && styles.secondary,
-          isDestructive && styles.destructive,
+          isPrimary && { backgroundColor: themePalette.accent },
+          isSecondary && {
+            backgroundColor: themePalette.surface,
+            borderWidth: StyleSheet.hairlineWidth,
+            borderColor: themePalette.borderStrong,
+          },
+          isDestructive && {
+            backgroundColor: themePalette.statusDangerBg,
+            borderWidth: StyleSheet.hairlineWidth,
+            borderColor: themePalette.statusDanger,
+          },
           isGhost && styles.ghost,
           (disabled || loading) && styles.disabled,
           style,
@@ -91,7 +101,7 @@ export const Button: React.FC<ButtonProps> = ({
         {loading ? (
           <ActivityIndicator
             size="small"
-            color={isPrimary || isDestructive ? palette.textInverse : palette.accent}
+            color={isPrimary || isDestructive ? themePalette.textInverse : themePalette.accent}
           />
         ) : (
           <View style={styles.contentRow}>
@@ -102,10 +112,10 @@ export const Button: React.FC<ButtonProps> = ({
                 size === 'default' && styles.textDefault,
                 size === 'compact' && styles.textCompact,
                 size === 'sm' && styles.textSm,
-                isPrimary && styles.textPrimary,
-                isSecondary && styles.textSecondary,
-                isDestructive && styles.textDestructive,
-                isGhost && styles.textGhost,
+                isPrimary && { color: themePalette.textInverse },
+                isSecondary && { color: themePalette.textPrimary },
+                isDestructive && { color: themePalette.statusDanger },
+                isGhost && { color: themePalette.textSecondary },
                 textStyle,
               ]}
             >

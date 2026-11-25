@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { ArrowLeft } from 'lucide-react-native';
 import { palette, spacing, strokes } from '../../theme/tokens';
+import { useTheme } from '../../context/ThemeContext';
 import { Typography } from './Typography';
 import { triggerHaptic } from '../../utils/haptics';
 
@@ -20,13 +21,20 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   rightAction,
   showDivider = true,
 }) => {
+  const { palette: themePalette } = useTheme();
   const handleBack = () => {
     triggerHaptic();
     onBack?.();
   };
 
   return (
-    <View style={[styles.container, showDivider && styles.divider]}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: themePalette.canvas },
+        showDivider && [styles.divider, { borderBottomColor: themePalette.borderSubtle }],
+      ]}
+    >
       <View style={styles.leftContainer}>
         {onBack && (
           <TouchableOpacity
@@ -34,7 +42,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
             style={styles.backButton}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <ArrowLeft size={22} color={palette.textPrimary} strokeWidth={2} />
+            <ArrowLeft size={22} color={themePalette.textPrimary} strokeWidth={2} />
           </TouchableOpacity>
         )}
         <View style={styles.titleContainer}>

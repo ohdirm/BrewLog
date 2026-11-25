@@ -5,7 +5,9 @@ import { StyleSheet } from 'react-native';
  * Warm paper canvas, deep espresso ink, understated hairline rules.
  */
 
-export const palette = {
+export type ThemeMode = 'system' | 'light' | 'dark';
+
+export const lightPalette = {
   // Canvas & Surfaces
   canvas: '#FAF8F5',          // Warm off-white paper
   surface: '#FFFFFF',         // Pure sheet for inputs / modals
@@ -40,6 +42,39 @@ export const palette = {
   statusStar: '#C9821E',      // Warm amber
   statusStarBg: '#FCF5E8',
 };
+
+export const darkPalette: typeof lightPalette = {
+  canvas: '#141210',
+  surface: '#1E1B18',
+  surfaceRaised: '#25211D',
+  surfaceSubdued: '#26221E',
+  surfaceHighlight: '#322D27',
+
+  borderSubtle: 'rgba(250, 248, 245, 0.08)',
+  borderStrong: 'rgba(250, 248, 245, 0.18)',
+  divider: '#2C2722',
+
+  textPrimary: '#F5F2EC',
+  textSecondary: '#B3AAA0',
+  textTertiary: '#7E766E',
+  textInverse: '#141210',
+
+  ink: '#F5F2EC',
+  accent: '#D97248',
+  accentLight: '#332219',
+  accentPressed: '#BC5D2E',
+
+  statusSuccess: '#68A379',
+  statusSuccessBg: '#1D2B22',
+  statusWarning: '#D49446',
+  statusWarningBg: '#2C2318',
+  statusDanger: '#DE6863',
+  statusDangerBg: '#2F1E1E',
+  statusStar: '#E5A13B',
+  statusStarBg: '#2E2618',
+};
+
+export const palette = lightPalette;
 
 export const spacing = {
   xxs: 2,

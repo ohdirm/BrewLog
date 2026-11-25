@@ -15,6 +15,11 @@ export interface Recipe {
   ingredients: Ingredient[];
   steps: string;
   notes: string;
+  imageUri?: string;
+  tags?: string[];
+  rating?: number;
+  brewCount?: number;
+  lastBrewedAt?: number;
   isTried: boolean;
   isFavorite: boolean;
   createdAt: number;

@@ -8,6 +8,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { palette, radii, spacing, layout, strokes } from '../../theme/tokens';
+import { useTheme } from '../../context/ThemeContext';
 import { Typography } from './Typography';
 
 interface InputProps extends TextInputProps {
@@ -32,6 +33,7 @@ export const Input: React.FC<InputProps> = ({
   ...rest
 }) => {
   const [isFocused, setIsFocused] = useState(false);
+  const { palette: themePalette } = useTheme();
 
   return (
     <View style={[styles.container, containerStyle]}>
@@ -44,12 +46,16 @@ export const Input: React.FC<InputProps> = ({
       <View
         style={[
           styles.inputWrapper,
-          isFocused && styles.inputWrapperFocused,
-          Boolean(error) && styles.inputWrapperError,
+          {
+            backgroundColor: themePalette.surface,
+            borderColor: themePalette.borderStrong,
+          },
+          isFocused && { borderColor: themePalette.accent, borderWidth: 1.5 },
+          Boolean(error) && { borderColor: themePalette.statusDanger },
         ]}
       >
         <TextInput
-          placeholderTextColor={palette.textTertiary}
+          placeholderTextColor={themePalette.textTertiary}
           onFocus={(e) => {
             setIsFocused(true);
             onFocus?.(e);
@@ -58,7 +64,7 @@ export const Input: React.FC<InputProps> = ({
             setIsFocused(false);
             onBlur?.(e);
           }}
-          style={[styles.input, style]}
+          style={[styles.input, { color: themePalette.textPrimary }, style]}
           {...rest}
         />
 

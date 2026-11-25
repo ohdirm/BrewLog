@@ -13,7 +13,7 @@ import { Eye, EyeOff, CheckCircle2 } from 'lucide-react-native';
 import { RootStackParamList } from '../types/navigation';
 import { palette, spacing, layout, strokes } from '../theme/tokens';
 import { Typography, Input, Button, HeaderBar } from '../components/common';
-import { saveUser, getUsers } from '../storage';
+import { saveUser, getUsers, seedStarterRecipes, hashPassword } from '../storage';
 import { triggerHapticNotification } from '../utils/haptics';
 
 type Props = {
@@ -71,14 +71,18 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
 
+    const hashedPassword = await hashPassword(password);
     const newUser = {
       id: Date.now().toString(),
       username: username.trim(),
-      password,
+      password: hashedPassword,
       createdAt: Date.now(),
     };
 
     const success = await saveUser(newUser);
+    if (success) {
+      await seedStarterRecipes(newUser.id);
+    }
     setIsSubmitting(false);
 
     if (success) {
